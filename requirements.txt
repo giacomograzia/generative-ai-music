@@ -1,0 +1,8 @@
+numpy
+pandas
+pretty_midi
+matplotlib
+soundfile
+scipy
+torch
+pytest
