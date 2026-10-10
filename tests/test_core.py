@@ -3,7 +3,7 @@ import numpy as np
 
 from src.config import SEEDS, skeleton_bar, skeleton_loop
 from src.data import PITCH_TO_CHANNEL, four_on_the_floor, make_windows, quantize, trim_empty
-from src.generate import add_fill, rule_loop
+from src.generate import add_fill, lstm_loop, rule_loop
 from src.metrics import bar_change, density, diversity, exact_bar_rate, repeat_rate, skeleton_accuracy
 
 
@@ -154,3 +154,19 @@ def test_four_on_the_floor():
     w = np.tile(skeleton_loop(8), (2, 1, 1))
     w[1, 16 + 4, 0] = 0  # second window misses one kick in bar 2
     assert four_on_the_floor(w).tolist() == [True, False]
+
+
+
+def test_constrained_generation_keeps_skeleton_and_is_seeded():
+    import torch
+
+    from src.model import DrumLSTM
+
+    torch.manual_seed(0)
+    for output in ("categorical", "bernoulli"):
+        model = DrumLSTM(output=output).eval()  # untrained: the constraint must hold for any model
+        for seed in SEEDS[:5]:
+            loop = lstm_loop(model, seed, constrained=True, n_bars=2).loop
+            assert (loop[:, :2] == skeleton_loop(2)[:, :2]).all()
+        a, b = lstm_loop(model, 3, constrained=False, n_bars=2), lstm_loop(model, 3, constrained=False, n_bars=2)
+        assert (a.loop == b.loop).all() and a.loop.shape == (32, 9)
