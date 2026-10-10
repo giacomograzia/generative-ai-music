@@ -2,7 +2,7 @@
 import numpy as np
 
 from src.config import SEEDS, skeleton_bar, skeleton_loop
-from src.data import PITCH_TO_CHANNEL, make_windows, quantize, trim_empty
+from src.data import PITCH_TO_CHANNEL, four_on_the_floor, make_windows, quantize, trim_empty
 from src.generate import add_fill, rule_loop
 from src.metrics import bar_change, density, diversity, exact_bar_rate, repeat_rate, skeleton_accuracy
 
@@ -148,3 +148,9 @@ def test_combo_roundtrip_and_comparable_losses():
         m = DrumLSTM(output=output)
         logits, _ = m(make_inputs(w))
         assert m.nll(logits, w).shape == (2, 32)  # one loss per step for both output types
+
+
+def test_four_on_the_floor():
+    w = np.tile(skeleton_loop(8), (2, 1, 1))
+    w[1, 16 + 4, 0] = 0  # second window misses one kick in bar 2
+    assert four_on_the_floor(w).tolist() == [True, False]

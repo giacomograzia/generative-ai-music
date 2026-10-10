@@ -130,3 +130,8 @@ def reference_loops(bars: list[np.ndarray], n: int, seed: int, n_bars: int = N_B
     pick = np.random.default_rng(seed).choice(len(windows), size=n, replace=False)
     return windows[np.sort(pick)]
 
+
+def four_on_the_floor(windows: np.ndarray) -> np.ndarray:
+    """Boolean (n,): windows (n, steps, 9) in which every bar has a kick on all four beats."""
+    kicks = windows.reshape(len(windows), -1, STEPS_PER_BAR, N_DRUMS)[:, :, ::4, 0]
+    return kicks.all(axis=(1, 2))

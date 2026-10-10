@@ -4,7 +4,7 @@ import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
 
 from src.config import CLASSES, STEPS_PER_BAR
-from src.plot_style import PALETTE, tint
+from src.plot_style import PALETTE, decorate, legend_below, tint
 
 LABELS = [c.replace("_", " ") for c in CLASSES]
 HIT_COLOR = PALETTE[0]      # dusty blue
@@ -52,3 +52,19 @@ def plot_quantization(starts: np.ndarray, channels: np.ndarray, pattern: np.ndar
     ax.scatter(starts / step_sec, channels, s=36, color=ONSET_COLOR, edgecolors="white", linewidths=1.5,
                label="when the drummer actually played", zorder=3)
     return ax
+
+
+def plot_loss_curve(history: dict) -> plt.Figure:
+    """Train and validation loss per epoch (mean BCE per cell), best epoch marked; returns the figure."""
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    epochs = np.arange(1, len(history["train"]) + 1)
+    ax.plot(epochs, history["train"], color=PALETTE[0], lw=2, label="training")
+    ax.plot(epochs, history["val"], color=PALETTE[1], lw=2, label="validation")
+    ax.axvline(history["best_epoch"], color=INK, lw=1)
+    ax.text(history["best_epoch"], ax.get_ylim()[1], " kept model", va="top", color=INK, fontsize=10)
+    ax.set_xlabel("epoch")
+    ax.set_ylabel("loss (binary cross-entropy per cell)")
+    legend_below(ax, ncol=2)
+    decorate(fig, f"Validation Loss Bottoms Out at Epoch {history['best_epoch']}",
+             subtitle="Mean loss per drum cell; the model from the best validation epoch is kept")
+    return fig
