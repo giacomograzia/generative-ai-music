@@ -15,3 +15,7 @@ CLAUDE.md
 
 # macOS metadata (Finder over SMB)
 ._*
+
+# trained models (recreate with: python -m src.train)
+checkpoints/*
+!checkpoints/.gitkeep

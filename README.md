@@ -24,4 +24,4 @@ Downloaded into `data/` (git-ignored) by `src/data.py`.
 
 ## Layout
 
-`src/` reusable code · `tests/` unit tests · `checkpoints/` trained model · `output/` MIDI, WAV, results.
+`src/` reusable code · `tests/` unit tests · `checkpoints/` trained models (not committed; `.venv/bin/python -m src.train` recreates them in about 16 min on a GPU) · `output/` MIDI, WAV, results.

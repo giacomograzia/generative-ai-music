@@ -147,7 +147,7 @@ project/
 │   └── plots.py           # grids, loss curve, results figure
 ├── tests/test_core.py     # small checks (section 13)
 ├── data/                  # GMD (git-ignored)
-├── checkpoints/           # trained model (small, committed)
+├── checkpoints/           # trained models (git-ignored; recreate with python -m src.train)
 └── output/                # midi/, audio/, results/
 ```
 
@@ -217,4 +217,4 @@ Minimum viable: steps 1-3 and 4 without the optional parts, then 5.
 
 - `notebook.ipynb` runs top to bottom in a clean environment, is annotated, has audible examples for A, B and C, the results table, and the reflection.
 - `pytest` passes.
-- `output/` contains the generated MIDI and WAV files; `checkpoints/` contains the trained model; README explains setup, data source and licence.
+- `output/` contains the generated MIDI and WAV files; `checkpoints/` can be recreated with `python -m src.train` (deterministic, about 16 minutes on the GPU; not committed); README explains setup, data source and licence.
