@@ -55,7 +55,7 @@ def plot_quantization(starts: np.ndarray, channels: np.ndarray, pattern: np.ndar
 
 
 def plot_loss_curve(history: dict) -> plt.Figure:
-    """Train and validation loss per epoch (mean BCE per cell), best epoch marked; returns the figure."""
+    """Train and validation loss per epoch (nats per step), best epoch marked; returns the figure."""
     fig, ax = plt.subplots(figsize=(9, 4.5))
     epochs = np.arange(1, len(history["train"]) + 1)
     ax.plot(epochs, history["train"], color=PALETTE[0], lw=2, label="training")
@@ -63,8 +63,8 @@ def plot_loss_curve(history: dict) -> plt.Figure:
     ax.axvline(history["best_epoch"], color=INK, lw=1)
     ax.text(history["best_epoch"], ax.get_ylim()[1], " kept model", va="top", color=INK, fontsize=10)
     ax.set_xlabel("epoch")
-    ax.set_ylabel("loss (binary cross-entropy per cell)")
+    ax.set_ylabel("loss (nats per 16th-note step)")
     legend_below(ax, ncol=2)
     decorate(fig, f"Validation Loss Bottoms Out at Epoch {history['best_epoch']}",
-             subtitle="Mean loss per drum cell; the model from the best validation epoch is kept")
+             subtitle="Negative log-likelihood of the real next step; the model from the best validation epoch is kept")
     return fig
