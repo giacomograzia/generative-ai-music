@@ -1,8 +1,9 @@
 """Core checks (see PLAN.md section 13). Tests are added as each module is implemented."""
 import numpy as np
 
-from src.config import skeleton_bar, skeleton_loop
+from src.config import SEEDS, skeleton_bar, skeleton_loop
 from src.data import PITCH_TO_CHANNEL, make_windows, quantize, trim_empty
+from src.generate import add_fill, rule_loop
 
 
 def test_skeleton_shape_and_hits():
@@ -55,3 +56,24 @@ def test_trim_empty_keeps_middle_pauses():
     bars[2, 0, 0] = bars[4, 0, 0] = 1  # bars 0-1 and 5 empty at the edges, bar 3 empty in the middle
     trimmed = trim_empty(bars)
     assert len(trimmed) == 3 and not trimmed[1].any()
+
+
+# --- generation ---
+
+
+def test_rule_loop_keeps_skeleton_and_is_seeded():
+    for seed in SEEDS:
+        loop = rule_loop(seed)
+        assert (loop[:, :2] == skeleton_loop(8)[:, :2]).all()
+    assert (rule_loop(3) == rule_loop(3)).all()
+    assert not (rule_loop(3) == rule_loop(4)).all()
+
+
+def test_fill_changes_only_toms_at_end_of_last_bar():
+    loop = rule_loop(0)
+    filled = add_fill(loop)
+    changed = np.argwhere(filled != loop)
+    assert all(step >= 7 * 16 + 12 and ch in (4, 5, 6) for step, ch in changed)
+    assert filled[7 * 16 + 12, 6] == 1 and filled[7 * 16 + 15, 4] == 1
+
+
