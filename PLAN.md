@@ -149,7 +149,7 @@ Not a formal experiment. For one seed, render three clips from C (and optionally
 
 - Render clips (15 s each = 8 bars at 128 BPM) for A, B, C: 2 per system, using seeds chosen in advance (not cherry-picked), same drum kit/renderer, loudness-normalized.
 - **Fill (listening clips only, same for all systems):** after generating the 8 bars, overwrite the tom channels (4-6) on steps 12-15 of bar 8 with a fixed pattern: step 12 high tom, 13 high tom, 14 mid tom, 15 low tom. Hats, cymbals, kick and snare are untouched.
-- Everyone on the team listens and writes down: is the beat easy to follow, is it interesting, would it work in a fitness class. The instructor's own judgement is valuable and should be written up as such.
+- Everyone on the team listens and writes down: is the beat easy to follow, is it interesting, would it work in a fitness class. Use `web/listening.html` (blind, random order per listener, three listeners, autosave and resume); save the results as `output/listening/ratings.json` for the notebook. The instructor's own judgement is valuable and should be written up as such.
 - If time allows, ask 5 other people (ideally people who do group fitness) to rate each clip 1-5 on: "How easy is the beat to follow?", "How musically interesting is it?", "Would this work for a fitness class?". Clips unlabeled and in random order. Report means with a clear small-sample caveat; no significance claims; collect no personal data.
 
 ## 8. Audio rendering

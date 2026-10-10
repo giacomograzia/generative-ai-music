@@ -22,6 +22,18 @@ Optional: a General MIDI soundfont for `pretty_midi.fluidsynth`; otherwise a num
 CC BY 4.0. Gillick et al. 2019, "Learning to Groove with Inverse Sequence Transformations".
 Downloaded into `data/` (git-ignored) by `src/data.py`.
 
+## Web pages
+
+Open directly in a browser (no server, no internet needed):
+
+- `web/listening.html`: blind listening test for three listeners (ratings 1-5 and notes per clip), autosaves in the
+  browser and resumes. In Chrome or Edge, **Save into project** writes straight to `output/listening/ratings.json`;
+  elsewhere, **Save to file** and move the download there. **Reveal** shows systems and results.
+- `web/generation.html`: step through or play the real model writing a loop; switch system (B, C, D), seed and
+  temperature; optional sound.
+
+Regenerate their data with `.venv/bin/python -m src.export_web` after re-running training or evaluation.
+
 ## Layout
 
 `src/` reusable code · `tests/` unit tests · `checkpoints/` trained models (not committed; `.venv/bin/python -m src.train` recreates them in about 16 min on a GPU) · `output/` MIDI, WAV, results.
