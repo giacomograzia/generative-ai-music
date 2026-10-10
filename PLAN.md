@@ -7,8 +7,8 @@ Deliverable: one annotated Jupyter notebook (code + generated music + explanatio
 
 - [x] Repo structure initialized (config, stubs, README, requirements, notebook skeleton)
 - [x] Step 1: Setup and data
-- [ ] Step 2: Rule baseline and metrics
-- [ ] Step 3: Train the LSTM
+- [x] Step 2: Rule baseline and metrics
+- [x] Step 3: Train the LSTM
 - [ ] Step 4: Generate B and C, evaluate
 - [ ] Step 5: Notebook
 
@@ -35,15 +35,16 @@ Either answer is a valid result. If C is not more varied than A, learning added 
 - kick on steps 0, 4, 8, 12 (four-on-the-floor)
 - snare on steps 4 and 12 (beats 2 and 4)
 
-## 2. Three systems
+## 2. Systems
 
 | System | What it does | Question it answers |
 |---|---|---|
 | **A. Rules** | Skeleton + hand-written probabilistic hats/toms/cymbals | What can we do without learning? (A vs C: does learning add anything beyond probabilistic rules?) |
 | **B. LSTM free** | Small LSTM trained on GMD generates every drum | What happens if learning controls everything? |
 | **C. LSTM constrained** | Same LSTM, but kick and snare are forced to the skeleton and fed back into the model; it samples only the other drums | Our contribution (B vs C: what do deterministic constraints add to the same learned model?) |
+| **D. Fine-tuned, constrained** | The LSTM after fine-tuning on four-on-the-floor bars (section 4), generating as C | Does training on data that matches our intent help? (C vs D). Its free version is reported only as a skeleton-accuracy number: does matching data alone keep the pulse? |
 
-**Fixed settings for the experiment:** 8-bar loops, 128 BPM, 30 loops per system (seeds 0-29), sampling temperature 1.0. Temperature is **not** part of the formal experiment (section 6).
+**Fixed settings for the experiment:** 8-bar loops, 128 BPM, 30 loops per system (seeds 0-29), sampling temperature 1.0. B, C and D are run for each of the 5 trained models (training seeds 0-4); the table reports the mean and the spread (min-max) over the 5. A and the GMD reference do not depend on training. Temperature is **not** part of the formal experiment (section 6).
 
 **Fills are not part of the experiment.** The quantitative comparison uses 8 plain bars. Fills exist only for listening clips (section 7).
 
@@ -64,6 +65,7 @@ Either answer is a valid result. If C is not more varied than A, learning added 
 **Data findings that shape the evaluation** (from `data_analysis/`):
 - The snare half of the skeleton matches the data (snare on 2 and 4 in about 57% of bars), but the kick half does not: real drummers mostly play kick on 1 and 3, and only 16% of bars have kick on all four beats. Only about 1% of GMD bars match the full skeleton exactly. So B, which imitates the data, is expected to miss the skeleton; this is why its numbers are read against the GMD reference row (section 5).
 - Snare averages about 5.2 hits per bar against 2 in the skeleton, mostly quiet ghost notes. Without velocity they count as full hits, so they lower B's skeleton accuracy. We keep them and state this effect in the notebook.
+- On average a hit sits 17% of a 16th away from its grid line; swing and shuffle styles (built on triplets) sit furthest off and are distorted by the 16th grid. 147 recordings sit more than 20% off, but many are rock with loose timing, and removing them would cost 30% of the data, so we keep them and report it.
 
 **The 9 drum channels** (index: class, MIDI pitch used when writing files):
 0 kick 36, 1 snare 38, 2 closed hat 42, 3 open hat 46, 4 low tom 45, 5 mid tom 48, 6 high tom 50, 7 crash 49, 8 ride 51.
@@ -73,19 +75,35 @@ Channels 0-1 are the skeleton; channels 2-8 are the "decoration".
 
 ## 4. Model
 
-One small LSTM, trained on CPU in minutes.
+One small LSTM, trained on the GPU (RTX 3070 Ti) in minutes. **The model predicts the next 16th note of human drumming from everything played so far**; it learns how drummers continue a groove, not what good fitness music is. The fitness part comes from the constraint in C. Validation loss therefore measures prediction of unseen human drumming, not musical quality.
 
 - Input per step: previous step's 9-dim 0/1 vector + position in bar (one-hot, 16).
-- 1-2 LSTM layers, hidden size about 128.
-- Output: 9 logits, one independent Bernoulli per drum (binary cross-entropy loss).
+- **Two output types, compared:** (1) *bernoulli*: 9 logits, an independent hit probability per drum; (2) *categorical*: 512 logits, one choice among all drum combinations per step, as Drums RNN. The categorical output can learn which drums go together (crash with kick) or exclude each other (open or closed hat); drummers use only 145 of the 512 combinations. Both are trained with the negative log-likelihood of the real next step (a proper scoring rule: probabilities stay calibrated, so sampled loops get realistic density without tuning; weighted or focal losses would distort this). Losses are reported in nats per step, so the two output types compare directly.
+- **Sizes compared:** 2x128 (dropout 0.2), 2x256 (dropout 0.5), 3x256 (dropout 0.5, the Drums RNN size).
+- **Model selection:** each output type x size is trained once (seed 0); the lowest validation loss wins. The table goes in `output/results/model_selection.csv` and the notebook. The chosen configuration is then trained with **5 seeds** (0-4) to show how much results depend on the training run (instead of cross-validation, which would replace the official split).
+- **Fine-tuning (system D):** each trained model continues training on the windows in which every bar has a kick on all four beats (713 train, 185 validation windows; data the model has already seen, so no test data leaks), learning rate 1e-4, early stopping on the four-on-the-floor validation windows.
+
+**Comparison with Drums RNN** (Magenta `drum_kit` configuration, checked in the source; this is the reference architecture we match):
+
+| | Drums RNN (`drum_kit`) | Ours |
+|---|---|---|
+| Drum classes | 9: kick, snare, closed/open hat, low/mid/high tom, crash, ride | Same 9 |
+| Time step | 16th note | Same |
+| Output | One choice among 512 combinations | Both that and 9 independent drums, compared by validation loss |
+| Position input | 6-bit binary counter | One-hot position in bar (16) |
+| Previous step input | One-hot of the 512 combinations | The 9 drums as 0/1 (same information) |
+| Network | 3 LSTM layers x 256, attention over the last 32 steps | 2x128 to 3x256 compared; no attention (128-step loops; one mechanism fewer to justify) |
+| Training | Dropout 0.5, learning rate 0.001, batch 128, gradient clipping 3 | Dropout 0.2-0.5, learning rate 0.001, batch 64, gradient clipping 3 |
+
+Alternatives to data augmentation considered: regularisation (dropout, early stopping), pretraining then fine-tuning (system D), and several training seeds. Augmentation itself was not used: shifting patterns breaks bar alignment, and rewriting the kick would fabricate drumming and make B keep the pulse by construction.
 - **Training windows: 8 consecutive bars (128 steps), the same length as the generated loops**, so generation does not run past the sequence length the model was trained on. Use stride of 1-4 bars. Discard fragments shorter than the window. Check the number of windows first; if too few remain, fall back to 4-bar windows and say so in the notebook. Do not build padding/masking unless it turns out to be necessary.
-- Teacher forcing, Adam, early stopping on validation loss, fixed seed. Save checkpoint and a loss curve.
+- Teacher forcing, Adam, gradient clipping 3, early stopping on validation loss (patience 15), fixed seeds, deterministic GPU kernels. Save checkpoints and a loss curve. Test loss is computed once per trained model and only reported.
 
-**Generation** (start from an all-zero input at step 0 in both modes; per step: `p = sigmoid(logits / T)`, sample each channel). **The LSTM hidden state is carried continuously across all 8 bars; it is never reset at bar boundaries.**
+**Generation** (start from an all-zero input at step 0 in both modes; per step, bernoulli: `p = sigmoid(logits / T)`, sample each channel; categorical: `softmax(logits / T)` over the 512 combinations). **The LSTM hidden state is carried continuously across all 8 bars; it is never reset at bar boundaries.**
 - **Free (B):** sample all 9 channels.
-- **Constrained (C):** at each step, set kick and snare to the skeleton values (instead of sampling them), feed these forced values back as the next input, and sample only channels 2-8.
+- **Constrained (C):** at each step, set kick and snare to the skeleton values (instead of sampling them), feed these forced values back as the next input, and sample only channels 2-8. For the categorical output, sample among the combinations whose kick and snare match the skeleton (renormalised): the exact conditional distribution.
 
-## 5. Metrics (four, each aligned with the research question; all computed on all 8 bars)
+## 5. Metrics (five, each aligned with the research question; all computed on all 8 bars)
 
 | Metric | Channels | Question it asks |
 |---|---|---|
@@ -117,6 +135,12 @@ Report one table (rows GMD reference, A, B, C, D; B-D as mean and min-max over t
 - Originally expected: A changes too much from bar to bar (close to a random rule with GMD's per-cell probabilities, about 13%). This was wrong: A changes 5.8%, close to the human 4.5-5.5%, because its probabilities are near 0 or near 0.9 (see metric 5). Revised expectation, stated before B and C exist: A has a repeat rate near 0%, and C repeats bars more often, closer to the human 25%. This is where learning can add something rules cannot.
 - B scores well below 100% on skeleton accuracy, roughly like real drumming (GMD bars score about 72%), because it imitates drummers who mostly do not play four-on-the-floor.
 
+**Follow-up analyses** (step 4, after the main table; a figure or a few numbers each, not extra table columns):
+1. **Copying:** share of generated bars (B, C) that appear exactly in the training bars, and the distance to the nearest training bar. Answers: is the model generating, or replaying memorised bars?
+2. **Phrase position:** decoration change at each bar boundary (1-2 ... 7-8) for the GMD reference, A, B and C. Real drummers change most going into bar 8; A changes evenly by design. The model only sees position within the bar, so a peak at 7-8 in B or C would mean it learned phrasing from the data on its own.
+3. **Cost of the constraint:** in C, the probability the model assigns to the kick/snare values that are then forced, per step position. Plus C vs B decoration (density, where-in-the-bar profile). Answers: how far does the skeleton push the model away from what it learned, and does forcing the beat change what it plays around it?
+4. **How B breaks the pulse:** split B's skeleton errors into missing kicks, extra kicks, missing snares and extra snares, per beat. Answers: does B play like a rock drummer (kick on 1 and 3, ghost notes), musically fine but wrong for fitness, or does it play nonsense?
+
 ## 6. Temperature (qualitative only)
 
 Not a formal experiment. For one seed, render three clips from C (and optionally B) at T = 0.8, 1.0, 1.2, and discuss in the notebook whether higher temperature gives more variation or just chaos.
@@ -135,12 +159,6 @@ Write patterns as MIDI with `pretty_midi` (drum track, the pitches above, fixed 
 ## 9. Repo layout
 
 ```
-**Follow-up analyses** (step 4, after the main table; a figure or a few numbers each, not extra table columns):
-1. **Copying:** share of generated bars (B, C) that appear exactly in the training bars, and the distance to the nearest training bar. Answers: is the model generating, or replaying memorised bars?
-2. **Phrase position:** decoration change at each bar boundary (1-2 ... 7-8) for the GMD reference, A, B and C. Real drummers change most going into bar 8; A changes evenly by design. The model only sees position within the bar, so a peak at 7-8 in B or C would mean it learned phrasing from the data on its own.
-3. **Cost of the constraint:** in C, the probability the model assigns to the kick/snare values that are then forced, per step position. Plus C vs B decoration (density, where-in-the-bar profile). Answers: how far does the skeleton push the model away from what it learned, and does forcing the beat change what it plays around it?
-4. **How B breaks the pulse:** split B's skeleton errors into missing kicks, extra kicks, missing snares and extra snares, per beat. Answers: does B play like a rock drummer (kick on 1 and 3, ghost notes), musically fine but wrong for fitness, or does it play nonsense?
-
 project/
 ├── notebook.ipynb         # the deliverable: explanation, audio, results, reflection
 ├── README.md              # how to run; data source and licence
@@ -200,7 +218,9 @@ Minimum viable: steps 1-3 and 4 without the optional parts, then 5.
 - Skeleton accuracy: a perfect skeleton loop gives 100%; a loop with extra kicks scores lower even though all required hits are present; exact-bar rate drops accordingly.
 - Diversity: two identical loops give 0; density counts channels 2-8 only.
 - Bar-to-bar change: a loop repeating one bar gives 0; changing one decoration cell between two bars gives 1/112.
+- Repeat rate: a loop repeating one bar gives 1; changing only the last bar gives 6/7; kick and snare do not count.
 - Trimming: leading and trailing empty bars are removed, empty bars in the middle are kept.
+- Model: combination index round-trips to drums; both output types give one loss per step; four-on-the-floor filter.
 - Listening fill: changes only channels 4-6 on steps 12-15 of bar 8.
 
 ## 14. Risks
@@ -218,7 +238,6 @@ Minimum viable: steps 1-3 and 4 without the optional parts, then 5.
 
 - Work in the order of section 10; after each step run the tests and a short demo and summarize results.
 - Keep functions small and typed; docstrings state shapes and units.
-- Repeat rate: a loop repeating one bar gives 1; changing only the last bar gives 6/7; kick and snare do not count.
 - Fix seeds; do not add dependencies beyond `requirements.txt` without asking.
 - Do not tune the comparison to make C look good; report negative results.
 - Keep code in `src/`; the notebook explains and shows results.
