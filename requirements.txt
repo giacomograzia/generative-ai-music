@@ -6,3 +6,5 @@ soundfile
 scipy
 torch
 pytest
+ipykernel
+nbconvert
