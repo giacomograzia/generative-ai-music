@@ -6,7 +6,7 @@ Deliverable: one annotated Jupyter notebook (code + generated music + explanatio
 ## Progress
 
 - [x] Repo structure initialized (config, stubs, README, requirements, notebook skeleton)
-- [ ] Step 1: Setup and data
+- [x] Step 1: Setup and data
 - [ ] Step 2: Rule baseline and metrics
 - [ ] Step 3: Train the LSTM
 - [ ] Step 4: Generate B and C, evaluate
@@ -22,8 +22,8 @@ It splits into two parts, each answered by the results table plus listening:
 
 | Part | Answer it with | "Yes" means |
 |---|---|---|
-| **Steady:** do we need the constraint to keep the pulse? | Skeleton accuracy and exact-bar rate of B (A and C are 100% by construction) | B's exact-bar rate is clearly below 100% |
-| **Alive:** is C more varied than A? | Decoration diversity of C vs A, at similar decoration density; listening ("interesting?") | C's diversity is higher than A's without C simply playing many more notes, and listeners hear it as more interesting |
+| **Steady:** do we need the constraint to keep the pulse? | Skeleton accuracy and exact-bar rate of B (A and C are 100% by construction), read against real drumming (the GMD reference row) | B's exact-bar rate is clearly below 100% |
+| **Alive:** is C more varied than A? | Bar-to-bar change and decoration diversity of C vs A, at similar decoration density; listening ("interesting?") | C's bar-to-bar change is closer to real drumming than A's (repeats with small changes, neither a static loop nor random), its diversity is not lower, it does not simply play many more notes, and listeners hear it as more interesting |
 
 Either answer is a valid result. If C is not more varied than A, learning added nothing beyond probabilistic rules, and we report that.
 
@@ -59,6 +59,11 @@ Either answer is a valid result. If C is not more varied than A, learning added 
 3. Quantize every note to the nearest 16th-note step using the file's tempo (`bpm` in `info.csv`, check against MIDI tempo events). Verify on a few files that performances start on a bar line and that bars line up. GMD contains human microtiming and velocity; our binary 16-step representation discards both, and the notebook should state this. Log how many files and notes were dropped.
 4. Map GMD's pitches to the 9 drum classes below. The Roland TD-11 used for GMD does not follow General MIDI exactly; use the mapping table on the dataset page (it lists a reduced category per pitch) and verify it with a small test. Drop anything unmappable and log the count.
 5. Produce an array `(n_bars, 16, 9)` per file, keeping bars in order so consecutive bars can form training windows.
+6. **Trim empty bars at the start and end of each file** (count-ins, silence before the drummer starts). Before trimming, 6% of training bars are empty (1,251 bars, all at file edges); they teach the model silence and pull d_GMD down (9.35 before, 9.96 after). Empty bars in the middle of a performance are kept (they are real pauses). Log how many bars were trimmed.
+
+**Data findings that shape the evaluation** (from `data_analysis/`):
+- The snare half of the skeleton matches the data (snare on 2 and 4 in about 57% of bars), but the kick half does not: real drummers mostly play kick on 1 and 3, and only 16% of bars have kick on all four beats. Only about 1% of GMD bars match the full skeleton exactly. So B, which imitates the data, is expected to miss the skeleton; this is why its numbers are read against the GMD reference row (section 5).
+- Snare averages about 5.2 hits per bar against 2 in the skeleton, mostly quiet ghost notes. Without velocity they count as full hits, so they lower B's skeleton accuracy. We keep them and state this effect in the notebook.
 
 **The 9 drum channels** (index: class, MIDI pitch used when writing files):
 0 kick 36, 1 snare 38, 2 closed hat 42, 3 open hat 46, 4 low tom 45, 5 mid tom 48, 6 high tom 50, 7 crash 49, 8 ride 51.
@@ -80,13 +85,14 @@ One small LSTM, trained on CPU in minutes.
 - **Free (B):** sample all 9 channels.
 - **Constrained (C):** at each step, set kick and snare to the skeleton values (instead of sampling them), feed these forced values back as the next input, and sample only channels 2-8.
 
-## 5. Metrics (three, each aligned with the research question; all computed on all 8 bars)
+## 5. Metrics (four, each aligned with the research question; all computed on all 8 bars)
 
 | Metric | Channels | Question it asks |
 |---|---|---|
 | **1. Skeleton accuracy** | 0-1 | Can a fitness instructor trust the pulse? |
 | **2. Decoration diversity** | 2-8 | Does the system generate varied rhythms? |
 | **3. Decoration density** | 2-8 | Are differences in diversity simply because one system plays more notes? |
+| **4. Bar-to-bar change** | 2-8 | Does the groove keep shifting like a human drummer's, rather than looping one bar or changing at random? |
 
 **1. Skeleton accuracy** penalizes both missing and extra kick/snare hits: `1 - (incorrect kick/snare cells) / (total kick/snare cells)`, comparing every cell of channels 0-1 with the desired skeleton. Required-hit recall alone would reward a free model that plays kick everywhere. Because most cells are "off" in the skeleton (6 of 32 kick/snare cells per bar are on), an empty kick/snare track still scores about 81%, so also report the stricter **exact-bar rate**: the percentage of bars whose kick and snare channels match the skeleton exactly. A and C score 100% on both by construction (this is a sanity check; the informative number is B).
 
@@ -94,13 +100,19 @@ One small LSTM, trained on CPU in minutes.
 
 **3. Decoration density:** average decoration hits per bar (channels 2-8). Using decoration only means that missing kicks in B are not misread as "less decorative".
 
-**Rule baseline A:** compute d_GMD once (section 3), set A's probabilities once so its decoration density is approximately d_GMD (for example: GMD training mean 8.7 hits/bar, rule baseline 8.4), then freeze A. No optimization.
+**4. Bar-to-bar change:** within each loop, the normalized Hamming distance between the decoration of consecutive bars (channels 2-8), averaged over the 7 bar pairs and the 30 loops. This is the metric closest to the aesthetic goal: diversity (metric 2) compares loops with each other, so a system that repeats one bar eight times can still score high on it. A static loop scores 0. Measured on GMD before building anything: real drummers change about 5.5% of decoration cells from one bar to the next, while a random rule with GMD's per-cell probabilities changes about 13%. "Alive" means close to the human value.
 
-Report one table (rows A, B, C; columns: skeleton accuracy, exact-bar rate, diversity, decoration density).
+**GMD reference row:** compute all metrics on real drumming: 30 non-overlapping 8-bar windows from the test split, picked with a fixed seed. It shows what human drumming scores against our skeleton and what human bar-to-bar change looks like, so A, B and C are read against it. It is a reference, not a competitor.
+
+**Rule baseline A:** compute d_GMD once (section 3, after trimming empty bars), set A's probabilities once so its decoration density is approximately d_GMD, then freeze A. No optimization; in particular, A is not tuned on bar-to-bar change.
+
+Report one table (rows GMD reference, A, B, C; columns: skeleton accuracy, exact-bar rate, diversity, decoration density, bar-to-bar change).
 
 **Expectations to state before looking at results** (they may be wrong; report honestly):
 - B breaks the pulse a noticeable share of the time.
 - C keeps the pulse; whether its decoration is more varied or more convincing than A's is decided by the table and the listening.
+- A, which samples each cell independently, changes too much from bar to bar (close to the random value, about 13%); C is closer to the human value. This is where learning can add something rules cannot.
+- B scores well below 100% on skeleton accuracy, roughly like real drumming (GMD bars score about 72%), because it imitates drummers who mostly do not play four-on-the-floor.
 
 ## 6. Temperature (qualitative only)
 
@@ -157,15 +169,17 @@ Minimum viable: steps 1-3 and 4 without the optional parts, then 5.
 4. **Learned model:** simple diagram, training curve, play free (B) output.
 5. **Adding constraints (C):** the model sometimes breaks the pulse; instead of asking the model to control decisions that must be reliable, we constrain them. Play the result. This is the conceptual centre of the notebook.
 6. **Experiment:** A vs B vs C table, audio examples (with the common fill), temperature clips, listening notes.
-7. **Reflection:** answer the two parts of the research question: steady (B vs C: was the constraint needed?) and alive (A vs C: did learning add variation?). Design choice: the model spends capacity learning kick and snare that we then fix; a cleaner design would predict only the decoration, conditioned on the skeleton. We chose the simpler architecture deliberately, because it lets free and constrained generation come from exactly the same model and isolates the effect of constraints. Other limits: binary 16th-note grid (no velocity, no microtiming), GMD is general human drumming and not dance or fitness music, fills and phrase structure are rule-based, small listening sample. Then future work (below).
+7. **Reflection:** answer the two parts of the research question: steady (B vs C: was the constraint needed?) and alive (A vs C: did learning add variation?). Design choice: the model spends capacity learning kick and snare that we then fix; a cleaner design would predict only the decoration, conditioned on the skeleton. We chose the simpler architecture deliberately, because it lets free and constrained generation come from exactly the same model and isolates the effect of constraints. Other limits: binary 16th-note grid (no velocity, no microtiming, ghost notes count as full hits), GMD is general human drumming and not dance or fitness music (its kick mostly plays on 1 and 3, not four-on-the-floor, so the constraint in C pushes the model away from what it learned), all training data is replayed at 128 BPM although most was played at 80-140 BPM, fills and phrase structure are rule-based, small listening sample. Then future work (below).
 
 ## 12. Future work (put in the notebook's last section; do not build now)
 
 - Condition generation on a density or intensity level; learn fills using the dataset's `beat_type` label.
 - A decoration-only model conditioned on the skeleton, compared with the current approach.
 - A formal temperature study; velocity and microtiming.
-- Compare with a pretrained model, Drums RNN. If added: run it in a separate environment, prime it with a four-on-the-floor bar, and note that its `--num_steps` includes the primer (confirm with `--help`; e.g. a 2-bar primer plus 8 generated bars needs 160 steps), then compare with the same three metrics on the same bars.
+- Compare with a pretrained model, Drums RNN. If added: run it in a separate environment, prime it with a four-on-the-floor bar, and note that its `--num_steps` includes the primer (confirm with `--help`; e.g. a 2-bar primer plus 8 generated bars needs 160 steps), then compare with the same metrics on the same bars.
 - A full class arc (warm-up, build, peak, cooldown) with changing BPM and temperature.
+- Train only on recordings near class tempo (e.g. 110-150 BPM, about 8,000 of 17,500 training bars) or on dance-like styles.
+- Remove quiet snare ghost notes using velocity, so the data's snare is closer to the skeleton.
 - Richer evaluation: novelty against training bars, pulse-clarity measures, leave-one-drummer-out, larger listening test.
 
 ## 13. Tests (small, in `tests/test_core.py`)
@@ -176,6 +190,8 @@ Minimum viable: steps 1-3 and 4 without the optional parts, then 5.
 - Same seed gives identical output.
 - Skeleton accuracy: a perfect skeleton loop gives 100%; a loop with extra kicks scores lower even though all required hits are present; exact-bar rate drops accordingly.
 - Diversity: two identical loops give 0; density counts channels 2-8 only.
+- Bar-to-bar change: a loop repeating one bar gives 0; changing one decoration cell between two bars gives 1/112.
+- Trimming: leading and trailing empty bars are removed, empty bars in the middle are kept.
 - Listening fill: changes only channels 4-6 on steps 12-15 of bar 8.
 
 ## 14. Risks
