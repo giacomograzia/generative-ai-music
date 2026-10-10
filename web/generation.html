@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Generation Step by Step</title>
+<style>
+  :root {
+    --blue: #5B84A8; --peach: #E8A87C; --ink: #222; --ink2: #555; --muted: #8C8C8C;
+    --line: #E2E2E2; --empty: #ECECEC; --blocked: #D0D0D0; --bg: #FAFAF8; --card: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  .lead { color: var(--ink2); margin: 0 0 16px; max-width: 760px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; background: var(--card);
+              border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; }
+  .controls label { font-size: 13px; color: var(--ink2); display: flex; gap: 6px; align-items: center; }
+  .group { display: flex; gap: 6px; align-items: center; }
+  select { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: white; }
+  .btn { border: 1px solid var(--line); background: white; padding: 7px 12px; border-radius: 8px; cursor: pointer; font: inherit; min-width: 44px; }
+  .btn.primary { background: var(--blue); color: white; border-color: var(--blue); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  /* info tooltip */
+  .info { position: relative; display: inline-flex; }
+  .info button { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--muted); background: white; color: var(--ink2);
+                 font: 600 12px/1 Georgia, serif; font-style: italic; cursor: help; padding: 0; }
+  .tip { display: none; position: absolute; top: 28px; left: -120px; width: 330px; z-index: 10; background: #2B2B2B; color: #F2F2F2;
+         padding: 10px 12px; border-radius: 8px; font-size: 13px; line-height: 1.45; box-shadow: 0 6px 20px rgba(0,0,0,.18); }
+  .tip b { color: white; }
+  .tip p { margin: 0 0 6px; }
+  .tip p:last-child { margin: 0; }
+  .info:hover .tip, .info:focus-within .tip { display: block; }
+  /* speed slider with reference points */
+  .speed { display: grid; grid-template-columns: auto 340px; column-gap: 10px; align-items: center; font-size: 13px; color: var(--ink2); }
+  .speed .readout { grid-column: 2; font-size: 12px; color: var(--ink2); margin-bottom: 2px; }
+  .slider { position: relative; width: 100%; padding: 0 22px; }
+  .slider input { width: 100%; margin: 0; display: block; }
+  .ticks { position: relative; height: 22px; margin: 4px 8px 0; }
+  .ticks span { position: absolute; transform: translateX(-50%); font-size: 11px; color: var(--muted); white-space: nowrap;
+                cursor: pointer; }
+  .ticks span::before { content: ""; display: block; width: 1px; height: 4px; background: var(--muted); margin: 0 auto 2px; }
+  .ticks span.on { color: var(--ink); font-weight: 600; }
+  .stage { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(320px, 1.3fr); gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  .card h2 { font-size: 15px; margin: 0 0 10px; }
+  .pipeline { display: flex; align-items: center; gap: 12px; }
+  .prev { display: grid; grid-template-columns: auto 22px; gap: 3px 6px; font-size: 12px; color: var(--ink2); align-items: center; }
+  .cell { width: 22px; height: 16px; border-radius: 3px; background: var(--empty); }
+  .cell.on { background: var(--blue); }
+  .arrow { color: var(--ink2); font-size: 20px; }
+  .lstm { background: var(--blue); color: white; border-radius: 10px; padding: 14px 12px; text-align: center; min-width: 120px; }
+  .lstm b { font-size: 18px; display: block; }
+  .lstm span { font-size: 12px; opacity: .9; }
+  .pos { margin-top: 10px; font-size: 13px; color: var(--ink2); }
+  .constraint { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 8px; background: #FBF1EA; color: #5a3a24; }
+  .pct { font-variant-numeric: tabular-nums; }
+  .probs .row { display: grid; grid-template-columns: 170px 1fr 48px; gap: 8px; align-items: center; margin: 5px 0; font-size: 13px; }
+  .probs .name { text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .probs .name.blocked { color: var(--muted); }
+  .probs .name.pick { font-weight: 700; }
+  .track { background: #F3F3F3; border-radius: 4px; height: 16px; overflow: hidden; }
+  .fill { height: 16px; width: 100%; border-radius: 4px; background: var(--blue); }
+  .fill.blocked { background: var(--blocked); }
+  .fill.pick { background: var(--peach); }
+  .mass { margin: 0 0 14px; font-size: 12.5px; }
+  .mass .lbl { display: flex; justify-content: space-between; color: var(--ink2); margin: 6px 0 3px; }
+  .mass .bar { position: relative; height: 14px; border-radius: 4px; overflow: hidden; background: var(--blocked); }
+  .mass .ok { position: absolute; inset: 0; background: var(--blue); }
+  .mass .note { color: var(--ink2); margin-top: 6px; }
+  .tipbox { position: fixed; pointer-events: none; background: #2B2B2B; color: white; font-size: 12px; padding: 4px 8px;
+            border-radius: 6px; display: none; z-index: 20; }
+  .caption { margin: 10px 0 0; font-size: 13px; color: var(--ink2); min-height: 2.6em; }
+  .wide { margin-top: 14px; }
+  canvas { width: 100%; display: block; }
+  .legend { font-size: 12px; color: var(--ink2); margin-top: 6px; }
+  .detailtoggle { margin-top: 14px; display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .explain { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 10px; font-size: 12.5px; color: var(--ink2); }
+  .explain b { color: var(--ink); display: block; margin-bottom: 2px; }
+  .hidden { display: none; }
+  h2.sub { font-size: 15px; margin: 22px 0 8px; }
+  .layerpick { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--ink2); margin-bottom: 6px; }
+  .layerpick button { border: 1px solid var(--line); background: white; border-radius: 6px; padding: 4px 10px; cursor: pointer; font: inherit; }
+  .layerpick button.on { background: var(--blue); color: white; border-color: var(--blue); }
+  .note { font-size: 13px; color: var(--ink2); }
+  @media (max-width: 760px) {
+    .stage { grid-template-columns: 1fr; } .probs .row { grid-template-columns: 120px 1fr 44px; }
+    .explain { grid-template-columns: 1fr 1fr; } .tip { left: -200px; width: 280px; }
+  }
+</style>
+<link rel="stylesheet" href="fluid.css">
+</head>
+<body>
+<main>
+  <h1>How the model writes drums, one 16th note at a time</h1>
+  <p class="lead">At every step the trained LSTM reads the previous step and its position in the bar, gives a chance to all
+    512 drum combinations, and one is drawn at random according to those chances. The pick is written into the loop and fed
+    back as the next input. In the constrained systems, combinations whose kick or snare does not match the skeleton are
+    blocked first. These are real runs of the trained model (training seed <span id="ts"></span>).</p>
+
+  <div class="controls floating">
+    <label>System <select id="system"></select></label>
+    <label>Seed <select id="seed"></select></label>
+    <div class="group">
+      <label>Temperature <select id="temp"></select></label>
+      <span class="info"><button type="button" aria-describedby="temptip" aria-label="About temperature">i</button>
+        <span class="tip" role="tooltip" id="temptip">
+          <p>Temperature reshapes the model's chances before the random pick.</p>
+          <p><b>0.8 · cooler:</b> likely options get even likelier. Safer and more repetitive.</p>
+          <p><b>1.0 · as learned:</b> the model's own chances, unchanged. <b>All experiments use 1.0</b>: the results table,
+            the follow-up analyses and the listening clips.</p>
+          <p><b>1.2 · warmer:</b> chances are flattened, so unlikely options come up more often. More surprising; too warm
+            drifts into chaos.</p>
+          <p>0.8 and 1.2 appear only here and in three qualitative clips.</p>
+        </span></span>
+    </div>
+    <div class="group">
+      <button class="btn" id="back" aria-label="Back one step" title="Back one step (←)">◀ Back</button>
+      <button class="btn primary" id="play" aria-label="Play" title="Play / pause (Space)">▶ Play</button>
+      <button class="btn" id="next" aria-label="Forward one step" title="Forward one step (→)">Next ▶</button>
+      <button class="btn" id="restart" aria-label="Restart">↺ Restart</button>
+    </div>
+    <div class="speed">
+      <span class="readout" id="speedlabel"></span>
+      <span>Speed</span>
+      <div class="slider"><input type="range" id="speed" min="0" max="5" step="1" value="2" aria-label="Speed">
+        <div class="ticks" id="ticks"></div></div>
+    </div>
+    <label><input type="checkbox" id="sound"> Sound</label>
+  </div>
+
+  <div class="stage">
+    <div class="card">
+      <h2>1 · Read the previous step</h2>
+      <div class="pipeline">
+        <div class="prev" id="prev"></div>
+        <div class="arrow">→</div>
+        <div class="lstm"><b>LSTM</b><span>3 layers × 256<br>memory of the loop so far</span></div>
+        <div class="arrow">→</div>
+      </div>
+      <div class="pos" id="pos"></div>
+      <div class="constraint" id="constraint"></div>
+    </div>
+    <div class="card probs">
+      <h2 id="probtitle">2 · Predict the next step</h2>
+      <div class="mass" id="mass"></div>
+      <div id="rows"></div>
+      <p class="caption" id="caption"></p>
+    </div>
+  </div>
+
+  <div class="card wide">
+    <h2>3 · The loop so far</h2>
+    <canvas id="grid" height="220" aria-label="Drum grid of the loop being generated"></canvas>
+    <div class="legend" id="gridlegend"></div>
+  </div>
+
+  <label class="detailtoggle" title="For interested readers: the real numbers inside the network at each step"><input type="checkbox" id="detail"> Show what happens inside the model (detailed view)</label>
+  <div class="card wide hidden" id="detailcard">
+    <h2>Inside the model at this step</h2>
+    <p class="note hidden" id="nodetail">The detailed view is available at temperature 1.0 (the one the experiments use).</p>
+    <canvas id="inside" height="420" aria-label="Real values inside the model: input, three LSTM layers (output and memory), 512 output probabilities"></canvas>
+    <div class="explain">
+      <div><b>Input · 25 numbers</b>The previous step's 9 drums (1 = hit) and the position in the bar (a single 1 among 16).</div>
+      <div><b>LSTM layers · output h and memory c</b>Each square is one of the layer's 256 units. <i>Output h</i> (top, −1 blue to
+        +1 orange) is what the layer passes on. <i>Memory c</i> (bottom) is its internal notebook: gates decide what to erase,
+        write and read out at each step. Its values grow much larger (log colour scale, up to ±128).</div>
+      <div><b>Output · 512 chances</b>One per drum combination, darker = likelier (log scale). In constrained mode, crossed-out
+        squares are blocked: their kick or snare does not match the skeleton.</div>
+      <div><b>Pick · back to the input</b>One combination is drawn by chance (orange outline). Its 9 drums become the input
+        of the next step, so the model always continues from its own choices.</div>
+    </div>
+
+    <h2 class="sub">Memory over time</h2>
+    <div class="layerpick" id="layerpick"></div>
+    <canvas id="memtime" height="300" aria-label="Output h and memory c of one LSTM layer over all 128 steps"></canvas>
+    <p class="note" id="memnote"></p>
+  </div>
+</main>
+
+<script src="fluid.js"></script>
+<script src="generation_data.js"></script>
+<script>
+const G = GENERATION;
+const DRUMS = ["kick", "snare", "closed hat", "open hat", "low tom", "mid tom", "high tom", "crash", "ride"];
+const SHORT = ["kick", "snare", "hat", "open hat", "low tom", "mid tom", "high tom", "crash", "ride"];
+const SPEEDS = [[0.5, "very slow"], [1, "slow"], [2, "medium"], [4, "fast"], [8.53, "real time"], [24, "very fast"]];
+const STEPS = 128, BAR = 16, UNITS = G.units, LAYERS = G.layers;
+const $ = id => document.getElementById(id);
+
+let run, t = 0, phase = 0, timer = null, audio = null, flow = 1, flowStart = 0;
+const decoded = new Map();
+
+function fillSelect(el, items, fmt) { el.innerHTML = items.map(v => `<option value="${v}">${fmt(v)}</option>`).join(""); }
+fillSelect($("system"), Object.keys(G.systems), k => G.systems[k]);
+fillSelect($("seed"), G.seeds, s => s);
+fillSelect($("temp"), G.temperatures, x => x.toFixed(1) + (x === 1 ? " (experiments)" : ""));
+$("system").value = "C"; $("temp").value = "1";
+$("ts").textContent = G.trainSeed;
+
+// reference points under the speed slider
+$("ticks").innerHTML = SPEEDS.map(([v, name], i) =>
+  `<span data-i="${i}" style="left:${(i / (SPEEDS.length - 1)) * 100}%" title="${v} steps per second">${name}</span>`).join("");
+$("ticks").querySelectorAll("span").forEach(s => s.onclick = () => { $("speed").value = s.dataset.i; onSpeed(); });
+
+function comboName(i) {
+  const on = G.combos[i].map((b, k) => b ? SHORT[k] : null).filter(Boolean);
+  return on.length ? on.join(" + ") : "(nothing)";
+}
+function runKey() { return `${$("system").value}|${$("seed").value}|${Number($("temp").value).toFixed(1)}`; }
+function bytes(b64) { const s = atob(b64), a = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; }
+function details() {   // null when this run has no detail data (temperatures other than 1.0)
+  if (!run.hidden) return null;
+  const key = runKey();
+  if (!decoded.has(key)) decoded.set(key, { hidden: new Int8Array(bytes(run.hidden).buffer),
+    cell: new Int8Array(bytes(run.cell).buffer), probs: bytes(run.probs) });
+  return decoded.get(key);
+}
+// cell state stored as q = 127 * sign(c) * log1p(|c|) / log1p(cellMax)
+function cellValue(q) { return Math.sign(q) * Math.expm1(Math.abs(q) / 127 * Math.log1p(G.cellMax)); }
+let memLayer = LAYERS - 1;
+
+function load() { run = G.runs[runKey()]; t = 0; phase = 0; flow = 1; draw(); }
+
+function draw() {
+  const constrained = $("system").value !== "B";
+  $("gridlegend").textContent = "Rows are drums, columns are 16th notes; dark lines are bar lines. The orange outline is the current step." +
+    (constrained ? " Agreement row: pale = the model would have played this kick/snare anyway; darker orange = the constraint overruled it (hover for the number)." : "");
+  const s = run.steps[Math.min(t, STEPS - 1)];
+  const prev = t > 0 ? run.loop[t - 1] : Array(9).fill(0);
+  $("prev").innerHTML = DRUMS.map((d, k) => [d, k]).reverse()
+    .map(([d, k]) => `<span>${d}</span><div class="cell${prev[k] ? " on" : ""}"></div>`).join("");
+  $("pos").textContent = t >= STEPS ? "All 128 steps written." : `+ position in bar: ${t % BAR + 1} of 16 (bar ${Math.floor(t / BAR) + 1} of 8)`;
+  $("constraint").style.display = constrained ? "" : "none";
+  const keep = Math.round(s.allowedMass * 100), worst = s.top.find(x => !x[2]);
+  $("constraint").textContent = constrained
+    ? `Constraint: kick and snare must follow the skeleton. The model's own choices already fit it ${keep}% of the time here; ` +
+      `the other ${100 - keep}%${worst ? ` (mostly “${comboName(worst[0])}”)` : ""} are blocked, and the remaining options are scaled up to 100%.` : "";
+  drawMass(s, constrained, worst);
+  const showPick = phase === 1 || t >= STEPS;
+  const max = Math.max(...s.top.map(x => x[1]), 0.05);
+  // persistent rows: bars morph between steps with a spring instead of being rebuilt
+  const rows = $("rows");
+  while (rows.children.length < s.top.length) {
+    const r = document.createElement("div"); r.className = "row";
+    r.innerHTML = `<div class="name"></div><div class="track"><div class="fill springbar"></div></div><div class="pct"></div>`;
+    rows.appendChild(r);
+  }
+  s.top.forEach(([c, p, ok], i) => {
+    const r = rows.children[i], pick = showPick && c === s.pick, cls = !ok ? "blocked" : (pick ? "pick" : "");
+    const name = r.querySelector(".name"), fill = r.querySelector(".fill");
+    name.className = "name " + cls; name.title = comboName(c);
+    name.textContent = comboName(c) + (ok ? "" : " (blocked)");
+    fill.className = "fill springbar " + cls;
+    springScaleX(fill, p / max, 0.3);
+    r.querySelector(".pct").textContent = `${(p * 100).toFixed(p < 0.01 ? 1 : 0)}%`;
+  });
+  $("probtitle").textContent = showPick ? "2 · Pick one at random, by those chances" : "2 · Predict the next step";
+  $("caption").textContent = t >= STEPS ? "Done: 8 bars written. Press Restart, go Back, or change the options."
+    : showPick ? `Picked “${comboName(s.pick)}”. It is written into the loop and fed back as the next input.`
+    : `The model's top ${s.top.length} of 512 combinations for step ${t + 1}. The rest share the remaining ${(100 - s.top.reduce((a, x) => a + x[1], 0) * 100).toFixed(0)}%.`;
+  $("back").disabled = t === 0 && phase === 0;
+  $("next").disabled = t >= STEPS;
+  drawGrid();
+  drawInside();
+}
+
+function drawMass(s, constrained, worst) {
+  const box = $("mass");
+  if (!constrained) {
+    box.dataset.mode = "free";
+    box.innerHTML = `<div class="note">Free system: nothing is blocked; the pick is drawn from all 512 combinations.</div>`;
+    return;
+  }
+  if (box.dataset.mode !== "constrained") {   // build once, then only update (so the springs can move)
+    box.dataset.mode = "constrained";
+    box.innerHTML = `
+      <div class="lbl"><span>model's chances</span><span id="masstxt"></span></div>
+      <div class="bar"><div class="ok springbar" id="beforeok"></div></div>
+      <div class="lbl"><span>after the constraint</span><span id="aftertxt"></span></div>
+      <div class="bar"><div class="ok springbar" id="afterok"></div></div>`;
+  }
+  const keep = s.allowedMass, after = phase === 1 || t >= STEPS;
+  $("masstxt").textContent = `allowed ${(keep * 100).toFixed(0)}% · blocked ${(100 - keep * 100).toFixed(0)}%`;
+  $("aftertxt").textContent = after ? "allowed options scaled up to 100%" : "…";
+  springScaleX($("beforeok"), keep, 0.3);
+  springScaleX($("afterok"), after ? 1 : keep, 0.45);   // the blocked share disappears: the allowed part stretches to fill
+}
+
+function setupCanvas(cv, h) {
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth;
+  cv.width = w * dpr; cv.height = h * dpr;
+  const ctx = cv.getContext("2d"); ctx.scale(dpr, dpr); ctx.clearRect(0, 0, w, h);
+  return [ctx, w];
+}
+
+function agreeColor(m) {   // m = allowed share: 1 -> very pale, 0.5 or less -> full orange
+  const a = Math.min(Math.max((1 - m) / 0.5, 0), 1), lo = [246, 241, 236], hi = [214, 120, 70];
+  return `rgb(${lo.map((l, i) => Math.round(l + (hi[i] - l) * a)).join(",")})`;
+}
+let gridGeom = null;
+function drawGrid() {
+  const constrained = $("system").value !== "B";
+  const h = constrained ? 252 : 220, [ctx, w] = setupCanvas($("grid"), h);
+  const left = 78, top = 6, gw = w - left - 6, gh = 220 - top - 22, cw = gw / STEPS, ch = gh / 9;
+  gridGeom = { left, cw, stripY: top + gh + 20, stripH: 14, constrained };
+  const written = t + (phase === 1 || t >= STEPS ? 1 : 0);
+  ctx.font = "11px system-ui, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (let k = 0; k < 9; k++) {
+    const y = top + (8 - k) * ch;
+    ctx.fillStyle = "#555"; ctx.fillText(DRUMS[k], left - 6, y + ch / 2);
+    for (let i = 0; i < STEPS; i++) {
+      ctx.fillStyle = i < written && run.loop[i][k] ? "#5B84A8" : (i < written ? "#ECECEC" : "#F5F5F5");
+      ctx.fillRect(left + i * cw + 0.5, y + 1, Math.max(cw - 1, 1), ch - 2);
+    }
+  }
+  ctx.strokeStyle = "#333"; ctx.lineWidth = 1.5; ctx.textAlign = "left";
+  for (let b = 0; b <= 8; b++) {
+    const x = left + b * BAR * cw;
+    ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, top + gh); ctx.stroke();
+    if (b < 8) { ctx.fillStyle = "#555"; ctx.fillText(`bar ${b + 1}`, x + 3, top + gh + 12); }
+  }
+  if (t < STEPS) { ctx.strokeStyle = "#E8A87C"; ctx.lineWidth = 2.5; ctx.strokeRect(left + t * cw, top, cw, gh); }
+  if (constrained) {   // agreement strip: how much of the model's own chance the skeleton kept, per written step
+    const y = gridGeom.stripY;
+    ctx.textAlign = "right"; ctx.fillStyle = "#555"; ctx.fillText("agreement", left - 6, y + 7);
+    for (let i = 0; i < STEPS; i++) {
+      ctx.fillStyle = i < written ? agreeColor(run.steps[i].allowedMass) : "#F5F5F5";
+      ctx.fillRect(left + i * cw + 0.5, y, Math.max(cw - 1, 1), 14);
+    }
+  }
+}
+
+// --- detailed view: real values flowing input -> 3 LSTM layers -> 512 chances -> pick -> input ---
+function diverging(v) {   // v in [-1, 1]: blue (negative) -> light grey -> orange (positive)
+  const a = Math.min(Math.abs(v), 1), mid = [242, 242, 242];
+  const end = v < 0 ? [91, 132, 168] : [216, 132, 86];
+  return `rgb(${mid.map((m, i) => Math.round(m + (end[i] - m) * a)).join(",")})`;
+}
+function sequential(q) {  // q in [0, 1]: white -> blue -> dark blue
+  const stops = [[255, 255, 255], [91, 132, 168], [30, 50, 75]];
+  const x = q * 2, i = Math.min(Math.floor(x), 1), f = x - i;
+  return `rgb(${stops[i].map((s, j) => Math.round(s + (stops[i + 1][j] - s) * f)).join(",")})`;
+}
+function drawInside() {
+  if (!$("detail").checked) return;
+  const d = details();
+  $("nodetail").classList.toggle("hidden", !!d);
+  $("inside").classList.toggle("hidden", !d);
+  drawMemTime();
+  if (!d) return;
+  const w0 = $("inside").clientWidth, size0 = Math.min(130, (w0 - 140) / 6.2);
+  const h = 46 + 2 * size0 + 34 + 70, [ctx, w] = setupCanvas($("inside"), h);
+  const tt = Math.min(t, STEPS - 1), constrained = $("system").value !== "B";
+  const prev = tt > 0 ? run.loop[tt - 1] : Array(9).fill(0);
+  const input = [...prev, ...Array.from({ length: 16 }, (_, i) => i === tt % BAR ? 1 : 0)];
+  const s = run.steps[tt], showPick = phase === 1 || t >= STEPS;
+  // layout: input column | 3 layer grids | output grid
+  const top = 46, size = size0, cell = size / 16, cTop = top + size + 34;
+  const inX = 20, inCell = Math.min(10, (2 * size + 34) / 26);
+  const layerX = i => 90 + i * (size + 40);
+  const outX = layerX(LAYERS) + 10, outCell = Math.min((w - outX - 12) / 32, size / 16 * 1.0);
+  const stage = flow * 5;   // 0..5: which block the flow has reached
+  const lit = k => stage >= k;
+  ctx.font = "12px system-ui, sans-serif"; ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
+  // input
+  ctx.fillStyle = lit(0) ? "#222" : "#999"; ctx.fillText("input", inX - 4, top - 22);
+  input.forEach((v, i) => {
+    const y = top + i * inCell + (i >= 9 ? 6 : 0);
+    ctx.fillStyle = v ? (i < 9 ? "#5B84A8" : "#E8A87C") : "#ECECEC";
+    ctx.fillRect(inX, y, inCell * 2.2, inCell - 1.5);
+  });
+  ctx.fillStyle = "#777"; ctx.font = "10px system-ui, sans-serif";
+  ctx.fillText("drums", inX + inCell * 2.5, top + 4 * inCell); ctx.fillText("position", inX + inCell * 2.5, top + 16 * inCell + 6);
+  // layers
+  for (let L = 0; L < LAYERS; L++) {
+    const x = layerX(L), base = (tt * LAYERS + L) * UNITS;
+    ctx.font = "12px system-ui, sans-serif"; ctx.fillStyle = lit(L + 1) ? "#222" : "#999";
+    ctx.fillText(`LSTM layer ${L + 1}`, x, top - 22);
+    ctx.font = "10.5px system-ui, sans-serif"; ctx.fillStyle = "#777";
+    ctx.fillText("output h (passed on)", x, top - 6);
+    ctx.fillText("memory c (passed to itself)", x, cTop - 6);
+    for (let u = 0; u < UNITS; u++) {
+      const ux = x + (u % 16) * cell, uy = Math.floor(u / 16) * cell;
+      ctx.fillStyle = diverging(lit(L + 1) ? d.hidden[base + u] / 127 : 0);
+      ctx.fillRect(ux, top + uy, cell - 1, cell - 1);
+      ctx.fillStyle = diverging(lit(L + 1) ? d.cell[base + u] / 127 : 0);
+      ctx.fillRect(ux, cTop + uy, cell - 1, cell - 1);
+    }
+    // the memory loops back into the same layer at the next step
+    ctx.strokeStyle = "#BBB"; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(x + size + 10, cTop + size / 2, 8, -Math.PI / 2, Math.PI / 2); ctx.stroke();
+  }
+  // output: 512 chances as 16 rows x 32
+  ctx.font = "12px system-ui, sans-serif"; ctx.fillStyle = lit(4) ? "#222" : "#999"; ctx.fillText("512 chances", outX, top - 22);
+  const skel = constrained ? [[0, 4, 8, 12].includes(tt % BAR) ? 1 : 0, [4, 12].includes(tt % BAR) ? 1 : 0] : null;
+  for (let c = 0; c < 512; c++) {
+    const x = outX + (c % 32) * outCell, y = top + Math.floor(c / 32) * outCell;
+    const q = lit(4) ? d.probs[tt * 512 + c] / 255 : 0;
+    ctx.fillStyle = sequential(q);
+    ctx.fillRect(x, y, outCell - 1, outCell - 1);
+    const blocked = skel && (G.combos[c][0] !== skel[0] || G.combos[c][1] !== skel[1]);
+    if (blocked && lit(4)) {
+      ctx.strokeStyle = "rgba(120,120,120,.55)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x + 1, y + 1); ctx.lineTo(x + outCell - 2, y + outCell - 2); ctx.stroke();
+    }
+  }
+  // pick outline + feedback arrow
+  const pickVisible = showPick && lit(5);
+  if (pickVisible) {
+    const c = s.pick, x = outX + (c % 32) * outCell, y = top + Math.floor(c / 32) * outCell;
+    ctx.strokeStyle = "#E8A87C"; ctx.lineWidth = 3; ctx.strokeRect(x - 2, y - 2, outCell + 3, outCell + 3);
+    ctx.fillStyle = "#222"; ctx.font = "12px system-ui, sans-serif";
+    ctx.fillText(`pick: ${comboName(c)}`, outX, top + 16 * outCell + 18);
+  }
+  // arrows between blocks, coloured by how far the flow has got
+  const midY = top + size / 2;
+  const arrow = (x1, x2, on) => {
+    ctx.strokeStyle = on ? "#333" : "#CCC"; ctx.fillStyle = ctx.strokeStyle; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x1, midY); ctx.lineTo(x2 - 6, midY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x2, midY); ctx.lineTo(x2 - 7, midY - 4); ctx.lineTo(x2 - 7, midY + 4); ctx.fill();
+  };
+  arrow(inX + inCell * 2.2 + 46, layerX(0) - 4, lit(1));
+  for (let L = 1; L < LAYERS; L++) arrow(layerX(L - 1) + size + 4, layerX(L) - 4, lit(L + 1));
+  arrow(layerX(LAYERS - 1) + size + 4, outX - 4, lit(4));
+  // colour key for the two scales
+  ctx.font = "10.5px system-ui, sans-serif"; ctx.fillStyle = "#777"; ctx.textAlign = "left";
+  const kx = outX + 22, ky = cTop + 6;   // right of the feedback line
+  [["output h", ["−1", "0", "+1"]], ["memory c (log scale)", ["−128", "0", "+128"]]].forEach(([name, ticks], j) => {
+    const y = ky + j * 42;
+    ctx.fillStyle = "#555"; ctx.fillText(name, kx, y);
+    for (let i = 0; i <= 40; i++) { ctx.fillStyle = diverging(i / 20 - 1); ctx.fillRect(kx + i * 3, y + 4, 3, 8); }
+    ctx.fillStyle = "#777"; ticks.forEach((tk, i) => ctx.fillText(tk, kx + i * 60 - (i ? 8 : 0), y + 24));
+  });
+  // feedback loop drawn under everything
+  const yb = h - 18;
+  ctx.strokeStyle = pickVisible ? "#E8A87C" : "#DDD"; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+  ctx.beginPath(); ctx.moveTo(outX + 6, top + 16 * outCell + 26); ctx.lineTo(outX + 6, yb);
+  ctx.lineTo(inX + 8, yb); ctx.lineTo(inX + 8, top + 25 * inCell + 14); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = pickVisible ? "#5a3a24" : "#AAA"; ctx.font = "11px system-ui, sans-serif";
+  ctx.fillText("the pick becomes the next input", inX + 20, yb - 5);
+  // moving dot showing where the data is right now
+  if (flow < 1) {
+    const xs = [inX + 30, layerX(0) + size / 2, layerX(1) + size / 2, layerX(2) + size / 2, outX + 8 * outCell, outX + 16 * outCell];
+    const i = Math.min(Math.floor(stage), 4), f = stage - i, x = xs[i] + (xs[i + 1] - xs[i]) * f;
+    ctx.fillStyle = "#E8A87C"; ctx.beginPath(); ctx.arc(x, midY, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
+  }
+}
+// animate the flow for one step (only at slow speeds, when the detailed view is open)
+// memory over time: output h vs memory c of one layer, all units with the most movement, steps written so far
+const memCache = new Map();
+function memRows(d, L, kind) {   // the 40 units that vary most over this run, as [unit, values over steps]
+  const key = `${runKey()}|${L}|${kind}`;
+  if (memCache.has(key)) return memCache.get(key);
+  const src = kind === "h" ? d.hidden : d.cell, rows = [];
+  for (let u = 0; u < UNITS; u++) {
+    const vals = Array.from({ length: STEPS }, (_, s) => src[(s * LAYERS + L) * UNITS + u] / 127);
+    const m = vals.reduce((a, b) => a + b, 0) / STEPS, sd = Math.sqrt(vals.reduce((a, b) => a + (b - m) ** 2, 0) / STEPS);
+    rows.push([u, vals, sd, m]);
+  }
+  const top = rows.sort((a, b) => b[2] - a[2]).slice(0, 40).sort((a, b) => a[3] - b[3]);
+  memCache.set(key, top);
+  return top;
+}
+function stepCorrelation(d, L, kind) {   // mean over units of corr(value at step s, value at step s+1), real (decoded) values
+  const src = kind === "h" ? d.hidden : d.cell, val = q => kind === "h" ? q / 127 : cellValue(q);
+  let sum = 0, n = 0;
+  for (let u = 0; u < UNITS; u++) {
+    const x = Array.from({ length: STEPS }, (_, s) => val(src[(s * LAYERS + L) * UNITS + u]));
+    const a = x.slice(0, -1), b = x.slice(1), ma = a.reduce((p, q) => p + q, 0) / a.length, mb = b.reduce((p, q) => p + q, 0) / b.length;
+    let cov = 0, va = 0, vb = 0;
+    for (let i = 0; i < a.length; i++) { cov += (a[i] - ma) * (b[i] - mb); va += (a[i] - ma) ** 2; vb += (b[i] - mb) ** 2; }
+    if (va > 1e-9 && vb > 1e-9) { sum += cov / Math.sqrt(va * vb); n++; }
+  }
+  return n ? sum / n : 0;
+}
+function drawMemTime() {
+  const d = details(), box = $("memtime");
+  $("layerpick").classList.toggle("hidden", !d); box.classList.toggle("hidden", !d);
+  if (!d) { $("memnote").textContent = ""; return; }
+  const rowH = 2.6, stripH = 40 * rowH, h = 24 + stripH + 30 + stripH + 26, [ctx, w] = setupCanvas(box, h);
+  const left = 78, gw = w - left - 6, cw = gw / STEPS, written = t + (phase === 1 || t >= STEPS ? 1 : 0);
+  ctx.font = "11px system-ui, sans-serif"; ctx.textBaseline = "middle";
+  [["h", "output h", 18], ["c", "memory c", 18 + stripH + 30]].forEach(([kind, name, y0]) => {
+    ctx.textAlign = "left"; ctx.fillStyle = "#222"; ctx.fillText(name + " · 40 most active units", left, y0 - 9);
+    memRows(d, memLayer, kind).forEach(([u, vals], r) => {
+      for (let s = 0; s < STEPS; s++) {
+        ctx.fillStyle = s < written ? diverging(vals[s]) : "#F7F7F7";
+        ctx.fillRect(left + s * cw, y0 + r * rowH, Math.ceil(cw), rowH);
+      }
+    });
+    ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
+    for (let b = 0; b <= 8; b++) { const x = left + b * BAR * cw; ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + stripH); ctx.stroke(); }
+    if (t < STEPS) { ctx.strokeStyle = "#E8A87C"; ctx.lineWidth = 2; ctx.strokeRect(left + t * cw, y0, cw, stripH); }
+  });
+  ctx.textAlign = "left"; ctx.fillStyle = "#555";
+  for (let b = 0; b < 8; b++) ctx.fillText(`bar ${b + 1}`, left + b * BAR * cw + 3, h - 10);
+  const ch = stepCorrelation(d, memLayer, "h"), cc = stepCorrelation(d, memLayer, "c");
+  $("memnote").textContent = `Layer ${memLayer + 1}, whole loop: from one step to the next, output h keeps a correlation of ${ch.toFixed(2)} ` +
+    `and memory c ${cc.toFixed(2)} (1 = unchanged). The output flickers and repeats with each bar; the memory drifts slowly ` +
+    `and carries the state of the groove. Compare the layers: the deeper the layer, the slower its memory.`;
+}
+$("layerpick").innerHTML = "Layer " + Array.from({ length: LAYERS }, (_, i) => `<button data-l="${i}">${i + 1}</button>`).join("");
+$("layerpick").querySelectorAll("button").forEach(b => b.onclick = () => { memLayer = +b.dataset.l; markLayer(); drawMemTime(); });
+function markLayer() { $("layerpick").querySelectorAll("button").forEach(b => b.classList.toggle("on", +b.dataset.l === memLayer)); }
+markLayer();
+
+function startFlow() {
+  if (!$("detail").checked || speed() > 2 || REDUCED_MOTION.matches) { flow = 1; return; }
+  flow = 0; flowStart = performance.now();
+  const dur = Math.min(1600, 800 / speed());
+  const frame = now => { flow = Math.min((now - flowStart) / dur, 1); drawInside(); if (flow < 1) requestAnimationFrame(frame); };
+  requestAnimationFrame(frame);
+}
+
+// --- sound: a tiny drum synth, played when a step is written ---
+function hit(k, when) {
+  const a = audio, out = a.createGain(); out.connect(a.destination);
+  const env = (g, peak, dur) => { g.gain.setValueAtTime(peak, when); g.gain.exponentialRampToValueAtTime(0.001, when + dur); };
+  if (k === 0 || (k >= 4 && k <= 6)) {
+    const o = a.createOscillator(), base = [55, 0, 0, 0, 90, 130, 180][k];
+    o.frequency.setValueAtTime(base * (k === 0 ? 2.2 : 1.3), when);
+    o.frequency.exponentialRampToValueAtTime(base, when + 0.08);
+    o.connect(out); env(out, k === 0 ? 0.9 : 0.5, k === 0 ? 0.35 : 0.3); o.start(when); o.stop(when + 0.4); return;
+  }
+  const len = { 1: 0.18, 2: 0.05, 3: 0.3, 7: 1.0, 8: 0.4 }[k];
+  const buf = a.createBuffer(1, Math.ceil(a.sampleRate * len), a.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = a.createBufferSource(); src.buffer = buf;
+  const f = a.createBiquadFilter(); f.type = k === 1 ? "bandpass" : "highpass"; f.frequency.value = k === 1 ? 1800 : 7000;
+  src.connect(f); f.connect(out); env(out, { 1: 0.6, 2: 0.25, 3: 0.25, 7: 0.25, 8: 0.15 }[k], len); src.start(when);
+}
+function sound(i) { if ($("sound").checked && audio) run.loop[i].forEach((on, k) => on && hit(k, audio.currentTime + 0.01)); }
+
+// --- stepping: each step has two phases (0: prediction, 1: pick written) ---
+function speed() { return SPEEDS[$("speed").value][0]; }
+function forward(twoPhase = true) {
+  if (t >= STEPS) return false;
+  if (twoPhase && phase === 0) { phase = 1; }
+  else { sound(t); t++; phase = 0; startFlow(); }
+  draw();
+  return true;
+}
+function backward() {
+  if (phase === 1) phase = 0;
+  else if (t > 0) { t--; phase = 1; }
+  flow = 1; draw();
+}
+function tick() { const slow = speed() <= 2; if (!forward(slow)) stop(); else if (!slow) phase = 0; }
+function play() {
+  if (!audio && $("sound").checked) audio = new (window.AudioContext || window.webkitAudioContext)();
+  if (t >= STEPS) { t = 0; phase = 0; }
+  clearInterval(timer); timer = setInterval(tick, 1000 / speed() / (speed() <= 2 ? 2 : 1));
+  $("play").textContent = "❚❚ Pause"; $("play").setAttribute("aria-label", "Pause");
+}
+function stop() { clearInterval(timer); timer = null; $("play").textContent = "▶ Play"; $("play").setAttribute("aria-label", "Play"); }
+function onSpeed() {
+  const [v, name] = SPEEDS[$("speed").value];
+  $("speedlabel").textContent = `${name} · ${v === 8.53 ? "128 BPM, as in the clips" : v + (v === 1 ? " step" : " steps") + " per second"}`;
+  $("ticks").querySelectorAll("span").forEach(s => s.classList.toggle("on", s.dataset.i === $("speed").value));
+  if (timer) play();
+}
+
+$("play").onclick = () => timer ? stop() : play();
+$("next").onclick = () => { stop(); forward(); };
+$("back").onclick = () => { stop(); backward(); };
+$("restart").onclick = () => { const was = !!timer; stop(); t = 0; phase = 0; flow = 1; draw(); if (was) play(); };
+$("speed").oninput = onSpeed;
+$("sound").onchange = () => { if ($("sound").checked && !audio) audio = new (window.AudioContext || window.webkitAudioContext)(); };
+$("detail").onchange = () => { $("detailcard").classList.toggle("hidden", !$("detail").checked); flow = 1; drawInside(); };
+["system", "seed", "temp"].forEach(id => $(id).onchange = () => { stop(); load(); });
+window.addEventListener("resize", () => { drawGrid(); drawInside(); });
+// hover on the agreement row shows the exact share
+const tipbox = document.createElement("div"); tipbox.className = "tipbox"; document.body.appendChild(tipbox);
+$("grid").addEventListener("mousemove", e => {
+  const g = gridGeom, r = $("grid").getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  const i = Math.floor((x - g.left) / g.cw), written = t + (phase === 1 || t >= STEPS ? 1 : 0);
+  if (!g.constrained || y < g.stripY || y > g.stripY + g.stripH || i < 0 || i >= written) { tipbox.style.display = "none"; return; }
+  const m = run.steps[i].allowedMass;
+  tipbox.textContent = `step ${i + 1} (bar ${Math.floor(i / BAR) + 1}, position ${i % BAR + 1}): model agreed ${(m * 100).toFixed(0)}%`;
+  tipbox.style.left = e.clientX + 12 + "px"; tipbox.style.top = e.clientY + 12 + "px"; tipbox.style.display = "block";
+});
+$("grid").addEventListener("mouseleave", () => tipbox.style.display = "none");
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "SELECT" || (e.target.tagName === "INPUT" && e.target.type !== "checkbox")) return;
+  if (e.code === "Space") { e.preventDefault(); timer ? stop() : play(); }
+  if (e.code === "ArrowRight") { stop(); forward(); }
+  if (e.code === "ArrowLeft") { stop(); backward(); }
+});
+onSpeed();
+load();
+</script>
+</body>
+</html>
