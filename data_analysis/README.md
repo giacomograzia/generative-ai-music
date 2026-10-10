@@ -209,8 +209,9 @@ with the bar before it:
 | **Real drummers** | **5.5%** (and 12% of bars are an exact repeat of the one before) |
 | Random hits, with the same chance per cell as the drummers | 13% |
 
-Real drumming sits in between: mostly the same pattern, with a few changes each bar. That gives us
-a concrete target for "alive": close to 5.5%, not 0 (a drum machine) and not 13% (noise).
+Real drumming sits in between: mostly the same pattern, with a few changes each bar, and often an
+exact repeat. That gives us a concrete reference for "alive": not 0% (a drum machine) and not
+13% (noise).
 
 ## 8. What this means for the project
 
@@ -220,9 +221,10 @@ a concrete target for "alive": close to 5.5%, not 0 (a drum machine) and not 13%
   freely (B) will imitate drummers who mostly play kick on 1 and 3, so it will miss our skeleton.
   That is a result about the data, not just about the model, so we also score **real drumming**
   with the same measures and read B against it.
-- **We measure "alive" as bar-to-bar change**, with the drummers' 5.5% as the reference. A rule
-  system that picks every hit at random will likely land near 13%; the question is whether the
-  learned model lands closer to the drummers.
+- **We measure "alive" by how the groove changes over time**, against the drummers as reference:
+  how much changes per bar (about 5.5%) and how often a bar is an exact repeat of the one before.
+  Drummers repeat and then vary; the question is whether the learned model does that better than
+  hand-written rules.
 - **Ghost notes** (quiet extra snare hits, part of why the snare averages 5.2 hits per bar against
   2 in the skeleton) count as full hits on our grid. We keep them and say so.
 
