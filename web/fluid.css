@@ -1,0 +1,37 @@
+/* Shared look and feel for the web pages, following the apple-design skill:
+   instant press feedback, a translucent floating bar, size-specific typography,
+   and gentler equivalents for reduced motion, reduced transparency and more contrast. */
+
+/* Typography: tight leading and negative tracking for large text, slight positive tracking for small text */
+h1 { font-size: 1.6rem; line-height: 1.15; letter-spacing: -0.02em; font-weight: 700; }
+h2 { letter-spacing: -0.01em; }
+small, .legend, .help, .note, .lock, .ticks span, .tag { letter-spacing: 0.01em; }
+
+/* Response: feedback on press, instantly */
+button { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled):active { transform: scale(0.97); transition: transform 100ms ease-out; }
+button { transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease; }
+
+/* Material: a floating translucent bar that content scrolls under */
+.floating {
+  position: sticky; top: 8px; z-index: 5;
+  background: rgba(255, 255, 255, 0.86);   /* translucent, but text behind never competes with the controls */
+  -webkit-backdrop-filter: blur(18px) saturate(180%); backdrop-filter: blur(18px) saturate(180%);
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
+}
+
+/* Bars animated with springs (transform: scaleX from the left) */
+.springbar { transform-origin: left center; transform: scaleX(0); will-change: transform; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+  button:not(:disabled):active { transform: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .floating { background: #FFFFFF; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-contrast: more) {
+  :root { --line: #8C8C8C; --ink2: #222; --muted: #555; }
+  .floating { background: #FFFFFF; border-color: #555; }
+}
