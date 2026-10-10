@@ -119,3 +119,14 @@ def make_windows(bars: list[np.ndarray], n_bars: int = N_BARS, stride: int = 2) 
     windows = [b[s:s + n_bars].reshape(-1, N_DRUMS)
                for b in bars for s in range(0, len(b) - n_bars + 1, stride)]
     return np.stack(windows) if windows else np.zeros((0, n_bars * STEPS_PER_BAR, N_DRUMS), np.int8)
+
+
+def reference_loops(bars: list[np.ndarray], n: int, seed: int, n_bars: int = N_BARS) -> np.ndarray:
+    """The GMD reference row: n non-overlapping n_bars windows of real drumming, picked with a fixed seed.
+
+    bars: list of (n_bars_i, 16, 9) arrays (use the test split). Returns (n, n_bars * 16, 9).
+    """
+    windows = make_windows(bars, n_bars, stride=n_bars)
+    pick = np.random.default_rng(seed).choice(len(windows), size=n, replace=False)
+    return windows[np.sort(pick)]
+

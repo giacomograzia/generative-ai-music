@@ -27,6 +27,7 @@ SEEDS = tuple(range(N_LOOPS))
 TEMPERATURE = 1.0
 TEMPERATURES_QUALITATIVE = (0.8, 1.0, 1.2)
 LISTEN_SEEDS = (0, 1)  # fixed before listening, the same for every system (not cherry-picked)
+REFERENCE_SEED = 0  # picks the GMD reference windows from the test split
 
 # Listening fill on the last bar: (step, channel) pairs; high tom=6, mid tom=5, low tom=4
 FILL = {12: 6, 13: 6, 14: 5, 15: 4}
