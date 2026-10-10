@@ -14,9 +14,18 @@ Deliverable: one annotated Jupyter notebook (code + generated music + explanatio
 
 ## 1. The idea
 
-**Aesthetic goal:** music a fitness instructor can trust: a fixed beat the body can lock onto, with learned variation that keeps it musically interesting.
+**Aesthetic goal: steady for the body, alive for the ear.** Workout drums whose pulse never wavers, so a class can move as one, but whose groove keeps shifting like a human drummer playing for the room, rather than one bar looping like a drum machine.
 
-**Research question:** can a learned model add interesting drum decoration while a fixed rhythmic skeleton preserves the reliable pulse needed for group fitness?
+**Research question:** with kick and snare fixed, does a model trained on human drumming produce more varied drums than hand-written rules?
+
+It splits into two parts, each answered by the results table plus listening:
+
+| Part | Answer it with | "Yes" means |
+|---|---|---|
+| **Steady:** do we need the constraint to keep the pulse? | Skeleton accuracy and exact-bar rate of B (A and C are 100% by construction) | B's exact-bar rate is clearly below 100% |
+| **Alive:** is C more varied than A? | Decoration diversity of C vs A, at similar decoration density; listening ("interesting?") | C's diversity is higher than A's without C simply playing many more notes, and listeners hear it as more interesting |
+
+Either answer is a valid result. If C is not more varied than A, learning added nothing beyond probabilistic rules, and we report that.
 
 **Core contribution (one sentence for the report):** we train a generative drum model on human drumming, show that unconstrained generation cannot guarantee the stable landmarks group fitness needs, and fix this by letting the model generate freely while deterministic kick and snare constraints are enforced during generation.
 
@@ -142,13 +151,13 @@ Minimum viable: steps 1-3 and 4 without the optional parts, then 5.
 
 ## 11. Notebook outline (7 sections)
 
-1. **The idea:** group fitness, why predictable pulse plus variation matters, the research question. Briefly mention resources reviewed and why they are not used in the core (Drums RNN: old Magenta/TensorFlow dependencies, extra environment; Deep Drum: JavaScript demo built on Drums RNN; Metacreation: research projects, dataset ideas; AudioCraft/MusicGen: audio-domain, heavy compute, little control over the beat).
+1. **The idea:** the aesthetic goal ("steady for the body, alive for the ear"), why group fitness needs both, the research question and its two parts. Briefly mention resources reviewed and why they are not used in the core (Drums RNN: old Magenta/TensorFlow dependencies, extra environment; Deep Drum: JavaScript demo built on Drums RNN; Metacreation: research projects, dataset ideas; AudioCraft/MusicGen: audio-domain, heavy compute, little control over the beat).
 2. **The data:** GMD, quantization to the 16-step × 9-drum representation, what it discards.
 3. **Rule baseline (A):** how it works, play a loop.
 4. **Learned model:** simple diagram, training curve, play free (B) output.
 5. **Adding constraints (C):** the model sometimes breaks the pulse; instead of asking the model to control decisions that must be reliable, we constrain them. Play the result. This is the conceptual centre of the notebook.
 6. **Experiment:** A vs B vs C table, audio examples (with the common fill), temperature clips, listening notes.
-7. **Reflection:** did learning add musical variation (A vs C)? did constraints make learned generation suitable for fitness (B vs C)? Design choice: the model spends capacity learning kick and snare that we then fix; a cleaner design would predict only the decoration, conditioned on the skeleton. We chose the simpler architecture deliberately, because it lets free and constrained generation come from exactly the same model and isolates the effect of constraints. Other limits: binary 16th-note grid (no velocity, no microtiming), GMD is general human drumming and not dance or fitness music, fills and phrase structure are rule-based, small listening sample. Then future work (below).
+7. **Reflection:** answer the two parts of the research question: steady (B vs C: was the constraint needed?) and alive (A vs C: did learning add variation?). Design choice: the model spends capacity learning kick and snare that we then fix; a cleaner design would predict only the decoration, conditioned on the skeleton. We chose the simpler architecture deliberately, because it lets free and constrained generation come from exactly the same model and isolates the effect of constraints. Other limits: binary 16th-note grid (no velocity, no microtiming), GMD is general human drumming and not dance or fitness music, fills and phrase structure are rule-based, small listening sample. Then future work (below).
 
 ## 12. Future work (put in the notebook's last section; do not build now)
 
