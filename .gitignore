@@ -12,3 +12,6 @@ __pycache__/
 
 # local assistant instructions
 CLAUDE.md
+
+# macOS metadata (Finder over SMB)
+._*
