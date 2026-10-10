@@ -46,15 +46,19 @@ class Generation:
 
     loop: (steps, 9) int8. probs: (steps, K) the model's probabilities before the constraint
     (K = 512 combinations or 9 drums). allowed: (steps, K) bool, what the constraint permits.
+    hidden: (steps, layers, units) the LSTM output h of every layer at each step, if recorded.
+    cell: (steps, layers, units) the LSTM cell state c (its internal memory) at each step, if recorded.
     """
     loop: np.ndarray
     probs: np.ndarray
     allowed: np.ndarray
+    hidden: np.ndarray | None = None
+    cell: np.ndarray | None = None
 
 
 @torch.no_grad()
 def lstm_loop(model: DrumLSTM, seed: int, constrained: bool, n_bars: int = N_BARS,
-              temperature: float = TEMPERATURE) -> Generation:
+              temperature: float = TEMPERATURE, record_hidden: bool = False) -> Generation:
     """Generate one loop step by step, feeding each step back as the next input.
 
     Free (B): the model chooses every drum. Constrained (C, D): kick and snare follow the skeleton;
@@ -66,10 +70,13 @@ def lstm_loop(model: DrumLSTM, seed: int, constrained: bool, n_bars: int = N_BAR
     skel = skeleton_loop(n_bars)
     dev = next(model.parameters()).device
     prev, state = torch.zeros(1, N_DRUMS, device=dev), None
-    loop, all_probs, all_allowed = [], [], []
+    loop, all_probs, all_allowed, hidden, cell = [], [], [], [], []
     combos = from_combo(torch.arange(N_COMBOS)).numpy()  # (512, 9)
     for t in range(n_bars * STEPS_PER_BAR):
         logits, state = model(step_input(prev, t), state)
+        if record_hidden:
+            hidden.append(state[0][:, 0].cpu().numpy())  # (layers, units)
+            cell.append(state[1][:, 0].cpu().numpy())
         logits = logits[0, 0].double() / temperature
         if model.output == "categorical":
             probs = torch.softmax(logits, -1).cpu().numpy()
@@ -89,7 +96,8 @@ def lstm_loop(model: DrumLSTM, seed: int, constrained: bool, n_bars: int = N_BAR
         all_probs.append(probs)
         all_allowed.append(allowed)
         prev = torch.tensor(step, dtype=torch.float32, device=dev)[None]
-    return Generation(np.array(loop, dtype=np.int8), np.array(all_probs), np.array(all_allowed))
+    return Generation(np.array(loop, dtype=np.int8), np.array(all_probs), np.array(all_allowed),
+                      np.array(hidden) if record_hidden else None, np.array(cell) if record_hidden else None)
 
 
 # --- listening fill -------------------------------------------------------------------------
