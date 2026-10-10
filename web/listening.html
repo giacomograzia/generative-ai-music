@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Listening Ratings</title>
+<style>
+  :root {
+    --blue: #5B84A8; --peach: #E8A87C; --ink: #222; --ink2: #555; --muted: #8C8C8C;
+    --line: #E2E2E2; --bg: #FAFAF8; --card: #FFFFFF; --sel: #EAF1F7;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  .lead { color: var(--ink2); margin: 0 0 20px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+  .tabs button { border: 1px solid var(--line); background: var(--card); padding: 8px 14px; border-radius: 8px; cursor: pointer; font: inherit; }
+  .tabs button.active { background: var(--blue); color: white; border-color: var(--blue); }
+  .tabs .count { font-size: 12px; opacity: .8; margin-left: 6px; }
+  button.tool { border: 1px solid var(--line); background: var(--card); padding: 7px 12px; border-radius: 8px; cursor: pointer; font: inherit; color: var(--ink); }
+  button.tool:hover { border-color: var(--blue); }
+  button.tool:disabled { color: var(--muted); cursor: not-allowed; background: #F3F3F3; }
+  button.tool:disabled:hover { border-color: var(--line); }
+  button.tool.linked { border-color: var(--blue); color: var(--blue); font-weight: 600; }
+  .lock { font-size: 12px; color: var(--muted); max-width: 300px; }
+  .status { color: var(--muted); font-size: 13px; margin-left: auto; }
+  .name { display: flex; gap: 8px; align-items: center; margin: 0 0 16px; }
+  .name input { font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; width: 220px; max-width: 100%; }
+  .clip { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+  .clip.done { border-left: 4px solid var(--blue); }
+  .clip h2 { font-size: 17px; margin: 0 0 8px; display: flex; gap: 10px; align-items: baseline; }
+  .tag { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--peach); color: #3a2a1f; }
+  audio { width: 100%; margin: 4px 0 12px; }
+  .q { display: grid; grid-template-columns: minmax(180px, 1fr) auto; gap: 8px; align-items: center; margin: 6px 0; }
+  .scale { display: flex; gap: 4px; }
+  .scale button { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); cursor: pointer; font: inherit; }
+  .scale button.on { background: var(--blue); border-color: var(--blue); color: white; }
+  .scale-ends { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; grid-column: 2; }
+  textarea { width: 100%; min-height: 60px; font: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 8px; margin-top: 8px; resize: vertical; }
+  .hidden { display: none; }
+  section.results { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; margin: 8px 0 16px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { font-size: 13px; color: var(--ink2); font-weight: 600; }
+  td.num { text-align: right; }
+  .barcell { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+  .minibar { height: 8px; background: var(--blue); border-radius: 4px; }
+  .note { margin: 4px 0; color: var(--ink2); }
+  .note b { color: var(--ink); }
+  .help { font-size: 13px; color: var(--ink2); }
+  @media (max-width: 560px) { .q { grid-template-columns: 1fr; } .scale-ends { grid-column: 1; } }
+  .topbar { border-radius: 12px; padding: 10px 12px; margin-bottom: 16px; }
+  .topbar .bar { margin-bottom: 8px; }
+  .topbar .bar:last-of-type { margin-bottom: 0; }
+  .progress { height: 4px; border-radius: 2px; background: #EDEDED; overflow: hidden; margin-top: 8px; }
+  .progress div { height: 100%; width: 100%; background: var(--blue); }
+  .status { padding: 3px 10px; border-radius: 99px; background: #F1F1EF; transition: opacity .3s ease; }
+  .status.saved { background: #EAF1F7; color: #3F6587; }
+  .done-banner { margin: 8px 0 0; padding: 8px 12px; border-radius: 8px; background: #EAF1F7; color: #2F4F6B; font-size: 14px; }
+  .scale button { transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, transform 100ms ease-out; }
+</style>
+<link rel="stylesheet" href="fluid.css">
+</head>
+<body>
+<main>
+  <h1>Listening ratings</h1>
+  <p class="lead">Eight 15-second clips (8 bars at 128 BPM). Listen to each and rate it 1–5 on three questions; add notes if you like.
+    Clips are <b>blind</b> and in a different random order for each listener. Everything saves automatically in this browser;
+    use <b>Save to file</b> to keep the results in the project and to resume elsewhere.</p>
+
+  <div class="topbar floating">
+  <div class="bar tabs" id="tabs"></div>
+  <div class="bar">
+    <button class="tool" id="direct">Save into project…</button>
+    <span class="lock" id="directnote"></span>
+    <button class="tool" id="save">Save to file</button>
+    <button class="tool" id="load">Load file…</button>
+    <input type="file" id="file" accept=".json,application/json" class="hidden">
+    <button class="tool" id="reveal">Reveal systems &amp; results</button>
+    <span class="status" id="status"></span>
+  </div>
+  <div class="progress" aria-hidden="true"><div class="springbar" id="progress"></div></div>
+  <p class="done-banner hidden" id="donebanner"></p>
+  </div>
+
+  <section class="results hidden" id="results"></section>
+
+  <div class="name"><label for="lname">Listener name</label><input id="lname" maxlength="40"></div>
+  <div id="clips"></div>
+  <p class="help">In Chrome or Edge, <b>Save into project</b> writes straight to <code>output/listening/ratings.json</code>
+    (pick that file once per session; the page asks again after a reload). In other browsers, use <b>Save to file</b> and
+    move the downloaded file there, so the notebook can read it.
+    Loading a file merges it with what is here (the most recent edit of each rating wins), so listeners on different
+    computers can each save a file and load them one after another.</p>
+</main>
+
+<script src="fluid.js"></script>
+<script src="clips.js"></script>
+<script>
+const QUESTIONS = [
+  ["follow", "How easy is the beat to follow?", "hard", "easy"],
+  ["interest", "How musically interesting is it?", "dull", "interesting"],
+  ["fitness", "Would this work for a fitness class?", "no", "yes"],
+];
+const STORE_KEY = "drum-listening-v1";
+const N_LISTENERS = 3;
+
+function emptyState() {
+  return { version: 1, revealed: false, current: 0,
+           listeners: Array.from({ length: N_LISTENERS }, (_, i) => ({ name: `Listener ${i + 1}`, ratings: {} })) };
+}
+
+let state = emptyState();
+try {
+  const saved = JSON.parse(localStorage.getItem(STORE_KEY));
+  if (saved && saved.version === 1) state = saved;
+} catch (e) { /* storage unavailable: start fresh, saving to file still works */ }
+
+function persist(msg) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); setStatus(msg || "Saved in this browser"); }
+  catch (e) { setStatus("Browser storage unavailable: use Save to file"); }
+  scheduleDirectSave();
+}
+
+// --- direct saving into the project (Chrome/Edge File System Access API) ---
+const CAN_DIRECT = "showSaveFilePicker" in window;
+let fileHandle = null, directTimer = null;
+
+function exportData() { return JSON.stringify({ ...state, clips: CLIPS, savedAt: new Date().toISOString() }, null, 2); }
+
+function scheduleDirectSave() {
+  if (!fileHandle) return;
+  clearTimeout(directTimer);
+  directTimer = setTimeout(writeDirect, 800);
+}
+async function writeDirect() {
+  try {
+    const w = await fileHandle.createWritable();
+    await w.write(exportData());
+    await w.close();
+    setStatus("Saved in this browser and to " + fileHandle.name);
+  } catch (e) { setStatus("Could not write " + fileHandle.name + ": " + e.message); }
+}
+function mergeIn(incoming) {
+  (incoming.listeners || []).forEach((l, i) => {
+    const mine = state.listeners[i];
+    if (!mine) return;
+    if (l.name && !/^Listener \d$/.test(l.name)) mine.name = l.name;
+    Object.entries(l.ratings || {}).forEach(([id, r]) => {
+      const cur = mine.ratings[id];
+      if (!cur || (r.updated || "") > (cur.updated || "")) mine.ratings[id] = r;
+    });
+  });
+}
+async function connectDirect() {
+  try {
+    fileHandle = await window.showSaveFilePicker({
+      suggestedName: "ratings.json", types: [{ description: "Ratings", accept: { "application/json": [".json"] } }] });
+    const existing = await (await fileHandle.getFile()).text();
+    if (existing.trim()) mergeIn(JSON.parse(existing));  // never overwrite ratings already in that file
+    const btn = document.getElementById("direct");
+    btn.textContent = "Saving into " + fileHandle.name;
+    btn.classList.add("linked");
+    document.getElementById("directnote").textContent = "Every change is written to this file automatically.";
+    render();
+    await writeDirect();
+  } catch (e) { if (e.name !== "AbortError") alert("Could not use that file: " + e.message); }
+}
+function setStatus(text) {
+  const el = document.getElementById("status");
+  el.textContent = text + " · " + new Date().toLocaleTimeString();
+  el.classList.toggle("saved", /^Saved|Downloaded|Merged/.test(text));
+}
+
+// Deterministic per-listener order (same order every time this listener opens the page).
+function order(listener) {
+  let a = 1 + listener * 7919;
+  const rand = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const idx = CLIPS.map((_, i) => i);
+  for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
+  return idx.map(i => CLIPS[i]);
+}
+
+function isDone(r) { return r && QUESTIONS.every(([k]) => r[k]); }
+
+function renderProgress() {
+  const L = state.listeners[state.current];
+  const done = CLIPS.filter(c => isDone(L.ratings[c.id])).length;
+  springScaleX(document.getElementById("progress"), done / CLIPS.length, 0.4);
+  const banner = document.getElementById("donebanner");
+  banner.classList.toggle("hidden", done < CLIPS.length);
+  banner.textContent = `All ${CLIPS.length} clips rated by ${L.name}. ` +
+    (fileHandle ? "They are saved in the project file." : "Use Save into project or Save to file to keep a copy.");
+}
+
+function renderTabs() {
+  renderProgress();
+  const tabs = document.getElementById("tabs");
+  tabs.innerHTML = "";
+  state.listeners.forEach((l, i) => {
+    const done = CLIPS.filter(c => isDone(l.ratings[c.id])).length;
+    const b = document.createElement("button");
+    b.className = i === state.current ? "active" : "";
+    b.innerHTML = `${escapeHtml(l.name)}<span class="count">${done}/${CLIPS.length}</span>`;
+    b.onclick = () => { state.current = i; persist(); render(); };
+    tabs.appendChild(b);
+  });
+}
+
+function renderClips() {
+  const L = state.listeners[state.current];
+  document.getElementById("lname").value = L.name;
+  const box = document.getElementById("clips");
+  box.innerHTML = "";
+  order(state.current).forEach((clip, n) => {
+    const r = L.ratings[clip.id] || {};
+    const div = document.createElement("div");
+    div.className = "clip" + (isDone(r) ? " done" : "");
+    const tag = state.revealed ? `<span class="tag">${escapeHtml(clip.system)} · ${clip.id}</span>` : "";
+    div.innerHTML = `<h2>Clip ${n + 1} ${tag}</h2><audio controls preload="none" src="${clip.file}"></audio>`;
+    QUESTIONS.forEach(([key, label, lo, hi]) => {
+      const q = document.createElement("div");
+      q.className = "q";
+      q.innerHTML = `<div>${label}</div><div class="scale" role="group" aria-label="${label}"></div>
+                     <div class="scale-ends"><span>1 ${lo}</span><span>${hi} 5</span></div>`;
+      const scale = q.querySelector(".scale");
+      for (let v = 1; v <= 5; v++) {
+        const b = document.createElement("button");
+        b.textContent = v;
+        b.className = r[key] === v ? "on" : "";
+        b.setAttribute("aria-pressed", r[key] === v);
+        b.onclick = () => {
+          const rr = state.listeners[state.current].ratings[clip.id] || {};
+          update(clip.id, key, rr[key] === v ? null : v);
+          // update only this clip in place, so audio that is playing keeps playing
+          const now = state.listeners[state.current].ratings[clip.id] || {};
+          scale.querySelectorAll("button").forEach((btn, i) => {
+            btn.className = now[key] === i + 1 ? "on" : "";
+            btn.setAttribute("aria-pressed", now[key] === i + 1);
+          });
+          div.classList.toggle("done", isDone(now));
+        };
+        scale.appendChild(b);
+      }
+      div.appendChild(q);
+    });
+    const ta = document.createElement("textarea");
+    ta.placeholder = "Notes (optional): what stood out?";
+    ta.value = r.notes || "";
+    ta.oninput = () => update(clip.id, "notes", ta.value);
+    div.appendChild(ta);
+    box.appendChild(div);
+  });
+}
+
+function update(clipId, key, value) {
+  const L = state.listeners[state.current];
+  const r = L.ratings[clipId] || (L.ratings[clipId] = {});
+  if (value === null || value === "") delete r[key]; else r[key] = value;
+  r.updated = new Date().toISOString();
+  persist();
+  renderTabs();
+  if (state.revealed) renderResults();
+}
+
+function mean(xs) { return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null; }
+
+function renderResults() {
+  const sec = document.getElementById("results");
+  sec.classList.toggle("hidden", !state.revealed);
+  document.getElementById("reveal").textContent = state.revealed ? "Hide systems & results" : "Reveal systems & results";
+  if (!state.revealed) return;
+  const systems = [...new Set(CLIPS.map(c => c.system))];
+  const cell = v => v === null ? "<td class='num'>–</td>"
+    : `<td class="num"><div class="barcell">${v.toFixed(2)}<div class="minibar" style="width:${v * 12}px"></div></div></td>`;
+  let html = "<h2>Results (all listeners)</h2><p class='help'>Mean rating 1–5 per system; n = number of ratings. Small sample: describe, don't test for significance.</p>";
+  html += "<table><tr><th>System</th>" + QUESTIONS.map(q => `<th>${q[1]}</th>`).join("") + "<th>n</th></tr>";
+  systems.forEach(s => {
+    const ids = CLIPS.filter(c => c.system === s).map(c => c.id);
+    const vals = k => state.listeners.flatMap(l => ids.map(id => (l.ratings[id] || {})[k]).filter(Boolean));
+    html += `<tr><td>${escapeHtml(s)}</td>${QUESTIONS.map(([k]) => cell(mean(vals(k)))).join("")}<td class="num">${vals("follow").length}</td></tr>`;
+  });
+  html += "</table><h2>Per listener</h2>";
+  state.listeners.forEach(l => {
+    html += `<h3>${escapeHtml(l.name)}</h3><table><tr><th>System</th>` + QUESTIONS.map(q => `<th>${q[1]}</th>`).join("") + "</tr>";
+    systems.forEach(s => {
+      const ids = CLIPS.filter(c => c.system === s).map(c => c.id);
+      html += `<tr><td>${escapeHtml(s)}</td>${QUESTIONS.map(([k]) => cell(mean(ids.map(id => (l.ratings[id] || {})[k]).filter(Boolean)))).join("")}</tr>`;
+    });
+    html += "</table>";
+  });
+  html += "<h2>Notes by system</h2>";
+  systems.forEach(s => {
+    const notes = state.listeners.flatMap(l => CLIPS.filter(c => c.system === s)
+      .map(c => [l.name, c.id, (l.ratings[c.id] || {}).notes]).filter(x => x[2]));
+    html += `<h3>${escapeHtml(s)}</h3>` + (notes.length ? notes.map(([n, id, t]) =>
+      `<p class="note"><b>${escapeHtml(n)}</b> (${id}): ${escapeHtml(t)}</p>`).join("") : "<p class='note'>No notes yet.</p>");
+  });
+  sec.innerHTML = html;
+}
+
+function render() { renderTabs(); renderClips(); renderResults(); }
+
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+document.getElementById("lname").oninput = e => {
+  state.listeners[state.current].name = e.target.value || `Listener ${state.current + 1}`;
+  persist(); renderTabs();
+};
+document.getElementById("reveal").onclick = () => {
+  if (!state.revealed && !confirm("This shows which system made each clip. Only reveal once all listeners have finished rating. Continue?")) return;
+  state.revealed = !state.revealed; persist(); render();
+};
+document.getElementById("save").onclick = () => {
+  const blob = new Blob([exportData()], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "ratings.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  setStatus("Downloaded ratings.json");
+};
+document.getElementById("load").onclick = () => document.getElementById("file").click();
+document.getElementById("file").onchange = async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    mergeIn(JSON.parse(await f.text()));
+    persist("Merged " + f.name); render();
+  } catch (err) { alert("Could not read that file: " + err.message); }
+  e.target.value = "";
+};
+
+const directBtn = document.getElementById("direct");
+if (CAN_DIRECT) {
+  directBtn.onclick = connectDirect;
+  directBtn.title = "Pick output/listening/ratings.json in the project; changes are then saved there automatically";
+  document.getElementById("directnote").textContent = "pick output/listening/ratings.json once";
+} else {
+  directBtn.disabled = true;
+  directBtn.textContent = "🔒 Save into project";
+  directBtn.title = "Needs Chrome or Edge on a computer. Here, use Save to file and move ratings.json into output/listening/.";
+  document.getElementById("directnote").textContent = "Chrome/Edge only";
+  document.getElementById("directnote").title = directBtn.title;
+}
+
+render();
+</script>
+</body>
+</html>
