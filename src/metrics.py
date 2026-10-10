@@ -62,3 +62,45 @@ def evaluate(loops: np.ndarray) -> dict[str, float]:
     return {"skeleton accuracy": skeleton_accuracy(loops), "exact-bar rate": exact_bar_rate(loops),
             "diversity": diversity(loops), "density": density(loops), "bar-to-bar change": bar_change(loops),
             "repeat rate": repeat_rate(loops)}
+
+
+# --- follow-up analyses (PLAN.md section 5) ----------------------------------------------------
+def change_per_boundary(loops: np.ndarray) -> np.ndarray:
+    """Decoration change at each bar boundary (1-2 ... 7-8), averaged over loops. Returns (n_bars - 1,)."""
+    dec = _bars(loops)[..., DEC]
+    return (dec[:, 1:] != dec[:, :-1]).mean(axis=(0, 2, 3))
+
+
+def pulse_errors(loops: np.ndarray) -> dict[str, float]:
+    """Kick/snare differences from the skeleton, per bar, split by type."""
+    bars = _bars(loops)
+    kick, snare = bars[..., 0], bars[..., 1]
+    beats, backbeats = [0, 4, 8, 12], [4, 12]
+    off_beat = [s for s in range(STEPS_PER_BAR) if s not in beats]
+    off_back = [s for s in range(STEPS_PER_BAR) if s not in backbeats]
+    out = {f"missing kick on beat {k + 1}": float((kick[..., b] == 0).mean()) for k, b in enumerate(beats)}
+    out["extra kicks off the beat"] = float(kick[..., off_beat].sum(-1).mean())
+    out["missing snare on beat 2"] = float((snare[..., 4] == 0).mean())
+    out["missing snare on beat 4"] = float((snare[..., 12] == 0).mean())
+    out["extra snares (incl. ghost notes)"] = float(snare[..., off_back].sum(-1).mean())
+    return out
+
+
+def copying(loops: np.ndarray, train_bars: np.ndarray, train_windows: np.ndarray) -> dict[str, float]:
+    """How close generated decoration is to the training data.
+
+    loops: (n, steps, 9); train_bars: (m, 16, 9); train_windows: (k, steps, 9) with stride 1.
+    Returns the share of bars that appear exactly in the training bars, the mean distance to the nearest
+    training bar (share of the 112 decoration cells), and the share of whole loops copied from training.
+    """
+    import torch  # matrix distances on the GPU when available
+
+    dev = "cuda" if torch.cuda.is_available() else "cpu"
+    gen = torch.tensor(_bars(loops)[..., DEC].reshape(-1, STEPS_PER_BAR * len(DEC)), dtype=torch.float32, device=dev)
+    ref = torch.tensor(train_bars[..., DEC].reshape(len(train_bars), -1), dtype=torch.float32, device=dev)
+    nearest = torch.cat([((g @ (1 - ref).T) + ((1 - g) @ ref.T)).min(1).values for g in gen.split(1024)])
+    nearest = (nearest / gen.shape[1]).cpu().numpy()
+    seen = {w[:, DEC].tobytes() for w in train_windows.astype(np.int8)}
+    copied = np.mean([lp[:, DEC].astype(np.int8).tobytes() in seen for lp in loops])
+    return {"bars found in training": float((nearest == 0).mean()), "distance to nearest training bar": float(nearest.mean()),
+            "loops copied from training": float(copied)}
