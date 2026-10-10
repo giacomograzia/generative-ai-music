@@ -84,6 +84,38 @@ end up after snapping. They line up closely, so the groove survives. What we los
 - The drum kit has more sounds than we use: we group them into **9 drums**
   (e.g. three ways of hitting the hi-hat all count as "closed hat").
 
+### Preprocessing, step by step
+
+| Step | What happens | Effect |
+|---|---|---|
+| 1. Filter | Keep grooves in 4/4; leave out fills and other time signatures | 491 of 1,150 recordings |
+| 2. Snap to grid | Move every hit to the nearest 16th note, using the recording's tempo (one fixed tempo per file) | 420,430 hits; timing feel is lost |
+| 3. Group sounds | Map the kit's 22 sounds to 9 drums (table below) | no hit is unmappable |
+| 4. Drop loudness | Keep only *whether* a drum is hit | ghost notes become full hits |
+| 5. Complete bars only | Cut the unfinished bar at the end of each recording | 2,941 hits dropped (0.7%) |
+| 6. Trim silence | Remove empty bars at the start and end (count-ins, waiting) | 1,251 bars removed; 20,597 left |
+| 7. Cut into windows | 8-bar stretches starting every 2 bars; recordings shorter than 8 bars give none | 7,212 train, 878 validation, 816 test windows (110 recordings too short) |
+
+| Our drum | Kit sounds (MIDI pitch) |
+|---|---|
+| kick | kick (36) |
+| snare | head (38), rim (40), cross-stick (37) |
+| closed hat | closed bow (42), closed edge (22), pedal (44) |
+| open hat | open bow (46), open edge (26) |
+| low tom | floor tom head (43), rim (58) |
+| mid tom | tom 2 head (45), rim (47) |
+| high tom | tom 1 head (48), rim (50) |
+| crash | crash 1 and 2, bow and edge (49, 55, 57, 52) |
+| ride | bow (51), edge (59), bell (53) |
+
+This follows the dataset's own mapping table and lands on the same 9 drums as Magenta's Drums RNN.
+
+**A known limit:** on average a hit sits 17% of a 16th note away from the grid line it snaps to.
+Swing and shuffle styles (blues, jazz, afro-cuban) sit furthest off, because they are built on
+triplets, which a 16th-note grid cannot represent. We keep them and note it: 147 recordings sit
+more than 20% of a 16th off on average, but many are rock with loose timing rather than swing,
+and leaving them all out would cost 30% of the data.
+
 ## 4. Listen to real grooves
 
 Three recordings from the training set, after snapping (bars 2-9, skipping the count-in).
