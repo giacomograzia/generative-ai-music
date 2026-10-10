@@ -119,3 +119,32 @@ def test_fill_changes_only_toms_at_end_of_last_bar():
     assert filled[7 * 16 + 12, 6] == 1 and filled[7 * 16 + 15, 4] == 1
 
 
+# --- model ---
+
+
+def test_model_inputs_shift_by_one_step():
+    import torch
+
+    from src.model import make_inputs
+
+    w = torch.zeros(1, 32, 9, dtype=torch.uint8)
+    w[0, 0, 0] = 1  # kick on step 0
+    x = make_inputs(w)
+    assert x.shape == (1, 32, 25)
+    assert x[0, 0, :9].sum() == 0 and x[0, 1, 0] == 1  # step 1 sees step 0's kick, step 0 sees nothing
+    assert x[0, 17, 9:].argmax() == 1  # position in bar wraps every 16 steps
+
+
+
+def test_combo_roundtrip_and_comparable_losses():
+    import torch
+
+    from src.model import DrumLSTM, from_combo, make_inputs, to_combo
+
+    steps = torch.tensor([[1, 0, 1, 0, 0, 0, 0, 0, 1], [0] * 9])
+    assert (from_combo(to_combo(steps)) == steps).all()
+    w = torch.zeros(2, 32, 9, dtype=torch.uint8)
+    for output in ("bernoulli", "categorical"):
+        m = DrumLSTM(output=output)
+        logits, _ = m(make_inputs(w))
+        assert m.nll(logits, w).shape == (2, 32)  # one loss per step for both output types
