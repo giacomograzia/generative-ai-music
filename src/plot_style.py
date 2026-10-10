@@ -5,14 +5,14 @@ gridlines only, a below-plot legend with no frame (queued via legend_below(), dr
 decorate() in figure coordinates), and a muted qualitative color palette.
 
 Usage:
-    from plot_style import PALETTE, apply_style, decorate
+    from src.plot_style import PALETTE, apply_style, decorate
 
     apply_style()
     fig, ax = plt.subplots(figsize=(9, 5))
     ...
-    decorate(fig, "Heart Dominates the Foreground",
-              subtitle="Voxel share of the 4 labeled organs (log scale)",
-              footnote_text="Class 4 (aorta) is unlabeled in this release.")
+    decorate(fig, "Kick Lands on 1 and 3, Snare on 2 and 4",
+              subtitle="Chance that each drum is hit at each 16th-note position",
+              footnote_text="Training split only.")
     fig.savefig(...)
 
 `decorate()` wraps title/subtitle/footnote to the actual figure width and
@@ -43,20 +43,6 @@ PALETTE = [
     "#E8C27E",  # honey
     "#D99B8C",  # terracotta
 ]
-
-# Fixed color per segmentation label number, shared by every figure.
-LABEL_COLORS = {1: PALETTE[0], 2: PALETTE[1], 3: PALETTE[2], 4: "#8C8C8C"}
-
-# Earthy qualitative palette (brick, deep teal, ochre, olive) for figures that
-# need a few categories which read as one family, e.g. scan field-of-view sizes.
-EARTH = ["#B5533C", "#2E5E6E", "#C9A15B", "#6E7F5A"]
-
-# Earthy alternative to LABEL_COLORS (teal esophagus, brick heart, ochre trachea,
-# olive aorta), used by figures that share the scan field-of-view look.
-EARTH_LABEL_COLORS = {1: EARTH[1], 2: EARTH[0], 3: EARTH[2], 4: "#5E9142"}
-
-# Warm sand for the unlabeled background, so it never reads as one of the organs.
-BACKGROUND_COLOR = "#CFC7B8"
 
 GRID_COLOR = "#D9D9D9"
 FOOTNOTE_COLOR = "#6B6B6B"
