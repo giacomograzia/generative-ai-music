@@ -4,6 +4,7 @@ import numpy as np
 from src.config import SEEDS, skeleton_bar, skeleton_loop
 from src.data import PITCH_TO_CHANNEL, make_windows, quantize, trim_empty
 from src.generate import add_fill, rule_loop
+from src.metrics import bar_change, density, diversity, exact_bar_rate, repeat_rate, skeleton_accuracy
 
 
 def test_skeleton_shape_and_hits():
@@ -56,6 +57,47 @@ def test_trim_empty_keeps_middle_pauses():
     bars[2, 0, 0] = bars[4, 0, 0] = 1  # bars 0-1 and 5 empty at the edges, bar 3 empty in the middle
     trimmed = trim_empty(bars)
     assert len(trimmed) == 3 and not trimmed[1].any()
+
+
+# --- metrics ---
+
+
+def test_skeleton_accuracy_penalizes_extra_hits():
+    perfect = skeleton_loop(8)
+    assert skeleton_accuracy(perfect) == 1.0 and exact_bar_rate(perfect) == 1.0
+    extra = perfect.copy()
+    extra[2, 0] = 1  # an extra kick in bar 1; all required hits still present
+    assert skeleton_accuracy(extra) < 1.0
+    assert exact_bar_rate(extra) == 7 / 8
+
+
+def test_diversity_and_density():
+    loop = rule_loop(0)
+    assert diversity(np.stack([loop, loop])) == 0.0
+    assert density(skeleton_loop(8)) == 0.0  # kick and snare are not decoration
+    hats = skeleton_loop(8)
+    hats[::2, 2] = 1  # closed hat on every 8th note: 8 per bar
+    assert density(hats) == 8.0
+
+
+def test_bar_change():
+    bar = np.zeros((16, 9), np.int8)
+    bar[::2, 2] = 1
+    assert bar_change(np.tile(bar, (8, 1))) == 0.0
+    two = np.tile(bar, (2, 1))
+    two[16 + 1, 3] = 1  # one decoration cell differs between the two bars
+    assert bar_change(two) == 1 / 112
+
+
+def test_repeat_rate():
+    bar = np.zeros((16, 9), np.int8)
+    bar[::2, 2] = 1
+    loop = np.tile(bar, (8, 1))
+    assert repeat_rate(loop) == 1.0
+    loop[7 * 16 + 1, 2] = 1  # only the last bar differs: 6 of 7 pairs are repeats
+    assert repeat_rate(loop) == 6 / 7
+    loop[:, 0] = 1  # kick and snare do not count
+    assert repeat_rate(loop) == 6 / 7
 
 
 # --- generation ---
