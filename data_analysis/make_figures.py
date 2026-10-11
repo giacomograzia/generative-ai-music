@@ -14,8 +14,9 @@ import pretty_midi
 import soundfile as sf
 
 from src.audio import SR, render, step_seconds
-from src.config import BPM, N_BARS, STEPS_PER_BAR, skeleton_loop
+from src.config import BPM, DECORATION_CHANNELS, N_BARS, STEPS_PER_BAR, skeleton_loop
 from src.data import GMD_DIR, PITCH_TO_CHANNEL, load_bars
+from src.generate import rule_probabilities
 from src.plot_style import PALETTE, apply_style, decorate, legend_below
 from src.plots import INK, LABELS, plot_grid, plot_quantization, seq_cmap
 
@@ -177,6 +178,32 @@ def figures(info, bars) -> None:
         plot_grid(example_bars(info, bars, genre).reshape(-1, 9), ax=ax)
         decorate(fig, f"{genre.capitalize()} Groove, 8 Bars at {row.bpm} BPM", subtitle=subtitles[genre])
         save(fig, f"example_{genre}")
+
+    # 9. decoration hit chances: real drummers vs the hand-written rules of system A
+    dec = list(DECORATION_CHANNELS)
+    fig, axes = plt.subplots(1, 2, figsize=(15, 4.6), sharey=True)
+    for ax, (name, p) in zip(axes, [("real drummers (training bars)", train.mean(0)[:, dec]),
+                                    ("hand-written rules (system A)", rule_probabilities()[:, dec])]):
+        ax.imshow(p.T, aspect="auto", origin="lower", cmap=seq_cmap(), vmin=0, vmax=1)
+        for (step, k), v in np.ndenumerate(p):
+            if v >= 0.005:
+                ax.text(step, k, f"{v:.2f}".lstrip("0"), ha="center", va="center", fontsize=7.5,
+                        color="white" if v > 0.5 else INK)
+        ax.grid(False)
+        ax.set_title(name, fontsize=12, loc="left")
+        ax.set_xticks(range(STEPS_PER_BAR), counts)
+        ax.set_xticks(np.arange(STEPS_PER_BAR + 1) - 0.5, minor=True)
+        ax.set_yticks(np.arange(len(dec) + 1) - 0.5, minor=True)
+        ax.grid(which="minor", color="white", lw=1.5)
+        ax.tick_params(which="both", length=0)
+        for s in ax.spines.values():
+            s.set_visible(False)
+        ax.set_xlabel("position in the bar")
+    axes[0].set_yticks(range(len(dec)), [LABELS[c] for c in dec])
+    decorate(fig, "The Rules Follow the Drummers' Pattern but Push It to Extremes",
+             subtitle="Chance that each decoration drum is hit at each 16th-note position; both total about 10 hits per bar",
+             footnote_text="Numbers are the chance of a hit (darker = more likely). Rules: when the open hat plays on the '&' of 4, the closed hat there is removed.")
+    save(fig, "rules_vs_data")
 
 
 def audio(info, bars) -> None:

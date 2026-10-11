@@ -197,6 +197,29 @@ The average, **10.0 hits per bar**, is a key number for the project. Our hand-wr
 is tuned once to play about this much decoration, so that when we compare it with the learned
 model we compare *how varied* they are, not simply *how much* they play.
 
+### Where the rule baseline's numbers come from
+
+System A's hit chances are **written by hand**, following common drumming habits (8th-note hi-hat,
+open hat leading into the next bar, crash on beat 1, rare tom pickups). They are not estimated from
+the data; the only thing taken from the data is the total, about 10 decoration hits per bar. Side by
+side with what the drummers actually play:
+
+<p><img src="figures/rules_vs_data.png" width="900" alt="Two heatmaps of decoration hit chances per position: real drummers have moderate chances spread over the bar, with the closed hat at 0.40-0.58 on the 8th notes and the ride at 0.20-0.32; the rules have 0.90 closed hat on the 8th notes, ride only on the beats, crash only on beat 1, toms and open hat only at the end of the bar"></p>
+
+- **Same shape.** In both, the closed hat is strongest on the 8th notes and much weaker on the
+  16ths in between, the crash marks beat 1, and toms are rare.
+- **Pushed to extremes.** The rules play the closed hat on 90% of 8th notes; the drummers on 40-58%.
+  The drummers' lower numbers are an average over many recordings: some keep time on the hi-hat,
+  others on the ride (2.6 ride hits per bar in the data against 1.2 in the rules).
+- **Concentrated.** Drummers spread open hats and toms over the whole bar; the rules put them only
+  at the end of the bar.
+
+Why not simply use the drummers' chances? Because they average grooves that no single drummer plays.
+Random hits with those chances change 13% of the decoration from one bar to the next, more than twice
+what real drummers do (section 7). Writing one clear groove is what a person would do without
+learning, which is exactly what system A stands for. The cost: other hand-written rules could score
+differently; A is a reasonable rule baseline, not the best possible one.
+
 ## 7. Real drummers repeat, with small changes
 
 Our aesthetic goal says the groove should keep shifting "rather than one bar looping". How much
