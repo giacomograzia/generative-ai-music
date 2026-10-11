@@ -10,7 +10,7 @@ Deliverable: one annotated Jupyter notebook (code + generated music + explanatio
 - [x] Step 2: Rule baseline and metrics
 - [x] Step 3: Train the LSTM
 - [x] Step 4: Generate B, C and D, evaluate (`python -m src.evaluate`; listening notes still to write)
-- [ ] Step 5: Notebook
+- [x] Step 5: Notebook (runs top to bottom; listening ratings, notes and listening conclusions still to write)
 
 ## 1. The idea
 
