@@ -108,7 +108,8 @@ def plot_results(summary, metrics: list[str], title: str) -> plt.Figure:
         _style_hbar_axis(ax)
     decorate(fig, title,
              subtitle="Mean over loops (dot) and range over the 5 trained models (line); A and the GMD reference do not depend on training",
-             footnote_text="Skeleton accuracy and exact-bar rate are 1.0 for A, C and D by construction.")
+             footnote_text="Skeleton accuracy and exact-bar rate are 1.0 for A, C and D by construction. Axes are zoomed to "
+                           "the observed values; the full range of each metric is in the notebook's metrics table.")
     return fig
 
 
