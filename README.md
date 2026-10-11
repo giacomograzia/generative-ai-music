@@ -14,6 +14,13 @@ pip install -r requirements.txt
 pytest
 ```
 
+Run the notebook top to bottom (a few seconds; loads results from `output/`, no GPU needed), or open it in
+Jupyter or VS Code:
+
+```
+.venv/bin/jupyter nbconvert --to notebook --execute --inplace notebook.ipynb
+```
+
 Optional: a General MIDI soundfont for `pretty_midi.fluidsynth`; otherwise a numpy drum synth is used.
 
 ## Data
