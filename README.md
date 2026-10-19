@@ -4,7 +4,7 @@ Generative AI for Music (University of Amsterdam). Aesthetic goal: **steady for 
 the ear**. Research question: with kick and snare fixed, does a model trained on human drumming
 produce more varied drums than hand-written rules? A small LSTM trained on human drumming adds
 decoration to a fixed kick/snare skeleton. We compare rules (A), free LSTM (B) and constrained
-LSTM (C). See [PLAN.md](PLAN.md) for the full project plan; the deliverable is `notebook.ipynb`.
+LSTM (C). The deliverable is `notebook.ipynb`.
 
 ## Setup
 
