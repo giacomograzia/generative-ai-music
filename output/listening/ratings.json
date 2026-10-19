@@ -1,0 +1,289 @@
+{
+  "version": 1,
+  "revealed": false,
+  "current": 0,
+  "listeners": [
+    {
+      "name": "Listener 1",
+      "ratings": {
+        "B_seed0": {
+          "interest": 5,
+          "updated": "2026-10-19T11:20:47.919Z",
+          "fitness": 2,
+          "follow": 3,
+          "notes": "Pretty chaotic, not very cohesive, a lot of accents maybe making it more difficult to follow the beat."
+        },
+        "A_seed1": {
+          "follow": 5,
+          "updated": "2026-10-19T11:21:18.295Z",
+          "interest": 3,
+          "fitness": 5,
+          "notes": "Very vibey."
+        },
+        "D_seed0": {
+          "follow": 5,
+          "updated": "2026-10-19T11:21:39.628Z",
+          "interest": 1,
+          "fitness": 3,
+          "notes": "Maybe a bit boring"
+        },
+        "D_seed1": {
+          "follow": 5,
+          "updated": "2026-10-19T11:22:30.659Z",
+          "interest": 4,
+          "fitness": 5,
+          "notes": "I really like this for a fitness class, it's easy to follow the beat and not boring."
+        },
+        "C_seed0": {
+          "follow": 4,
+          "updated": "2026-10-19T11:23:21.093Z",
+          "interest": 4,
+          "fitness": 3,
+          "notes": "Would still work for a fitness class but a bit less interesting."
+        },
+        "B_seed1": {
+          "follow": 1,
+          "updated": "2026-10-19T11:23:56.485Z",
+          "fitness": 1,
+          "interest": 2,
+          "notes": "It does not work well for anything\n"
+        },
+        "A_seed0": {
+          "interest": 4,
+          "updated": "2026-10-19T11:24:21.045Z",
+          "follow": 5,
+          "fitness": 5,
+          "notes": "Nice, chill yet interesting"
+        },
+        "C_seed1": {
+          "follow": 3,
+          "updated": "2026-10-19T11:24:45.153Z",
+          "interest": 3,
+          "fitness": 2
+        }
+      }
+    },
+    {
+      "name": "Listener 2",
+      "ratings": {
+        "D_seed0": {
+          "follow": 5,
+          "updated": "2026-10-19T13:18:38.962Z",
+          "interest": 4,
+          "fitness": 5,
+          "notes": "nice syncopations in the hi hat and a small tom fill that didnt distracted from the groove"
+        },
+        "C_seed0": {
+          "follow": 4,
+          "updated": "2026-10-19T13:19:35.620Z",
+          "interest": 4,
+          "fitness": 3,
+          "notes": "syncopations HiHat and Toms are a bit random and doesnt help the groove"
+        },
+        "B_seed0": {
+          "follow": 2,
+          "updated": "2026-10-19T13:20:20.734Z",
+          "interest": 4,
+          "fitness": 1,
+          "notes": "this is very alive and lacks a steady beat. More like a drum solo than a beat"
+        },
+        "B_seed1": {
+          "follow": 3,
+          "updated": "2026-10-19T13:21:08.609Z",
+          "interest": 2,
+          "fitness": 1,
+          "notes": "snare roll is overshadowing every other musical event"
+        },
+        "A_seed0": {
+          "follow": 4,
+          "updated": "2026-10-19T13:22:09.560Z",
+          "interest": 5,
+          "fitness": 5,
+          "notes": "this a nice example because fill ins are placed nicely, sometimes the hi hat is not played on the counts and syncopations are well placed"
+        },
+        "D_seed1": {
+          "notes": "too much going on but beat is noticeable. tom fills dont distracts as much as snare",
+          "updated": "2026-10-19T13:22:56.596Z",
+          "follow": 4,
+          "interest": 4,
+          "fitness": 3
+        },
+        "C_seed1": {
+          "notes": "too much ornaments at the beginning and a swing drums vibe in the hi Hat gives wrong vibes. Its not going forward",
+          "updated": "2026-10-19T13:24:13.914Z",
+          "follow": 4,
+          "interest": 4,
+          "fitness": 3
+        },
+        "A_seed1": {
+          "follow": 4,
+          "updated": "2026-10-19T13:25:36.587Z",
+          "interest": 3,
+          "notes": "nicely placed accents on the offbeats by hihat. beat is steady and fill ins are well placed",
+          "fitness": 5
+        }
+      }
+    },
+    {
+      "name": "Listener 3",
+      "ratings": {
+        "C_seed1": {
+          "follow": 4,
+          "updated": "2026-10-19T12:59:56.997Z",
+          "interest": 3,
+          "fitness": 3,
+          "notes": "it´s a nice little tune"
+        },
+        "C_seed0": {
+          "follow": 3,
+          "updated": "2026-10-19T13:01:06.561Z",
+          "interest": 3,
+          "fitness": 4,
+          "notes": "it´s like before but with one more sound"
+        },
+        "A_seed0": {
+          "follow": 2,
+          "updated": "2026-10-19T13:01:52.421Z",
+          "interest": 4,
+          "fitness": 3
+        },
+        "A_seed1": {
+          "follow": 3,
+          "updated": "2026-10-19T13:02:51.800Z",
+          "interest": 4,
+          "fitness": 4,
+          "notes": "it always sounds very similar"
+        },
+        "D_seed1": {
+          "follow": 3,
+          "updated": "2026-10-19T13:03:19.036Z",
+          "interest": 3,
+          "fitness": 3
+        },
+        "D_seed0": {
+          "follow": 2,
+          "updated": "2026-10-19T13:03:55.410Z",
+          "interest": 3,
+          "fitness": 3
+        },
+        "B_seed1": {
+          "follow": 4,
+          "updated": "2026-10-19T13:04:42.597Z",
+          "interest": 1,
+          "fitness": 1,
+          "notes": "this makes my head hurt"
+        },
+        "B_seed0": {
+          "follow": 2,
+          "updated": "2026-10-19T13:05:09.197Z",
+          "interest": 3,
+          "fitness": 3
+        }
+      }
+    },
+    {
+      "name": "Listener 4",
+      "ratings": {
+        "C_seed1": {
+          "updated": "2026-10-19T12:17:11.864Z",
+          "follow": 4,
+          "interest": 3,
+          "fitness": 2,
+          "notes": "Interesting decoration at first before it becomes a bit boring and flat."
+        },
+        "B_seed0": {
+          "follow": 1,
+          "updated": "2026-10-19T12:09:44.019Z",
+          "interest": 2,
+          "fitness": 1,
+          "notes": "there's a lot of snares, the beat is not so clear. you can find it but it does not make me want to move to it."
+        },
+        "A_seed1": {
+          "follow": 5,
+          "updated": "2026-10-19T12:11:35.938Z",
+          "interest": 2,
+          "fitness": 1,
+          "notes": "very flat, little variation. just a clear beat."
+        },
+        "D_seed0": {
+          "interest": 1,
+          "updated": "2026-10-19T12:11:55.354Z",
+          "fitness": 2,
+          "follow": 4,
+          "notes": "beat is clear, there's little variation, but more than in other samples. "
+        },
+        "D_seed1": {
+          "interest": 4,
+          "updated": "2026-10-19T12:12:56.605Z",
+          "follow": 4,
+          "fitness": 2,
+          "notes": "interesting sound on top of the beat, decoration. "
+        },
+        "C_seed0": {
+          "follow": 5,
+          "updated": "2026-10-19T12:13:20.014Z",
+          "interest": 1,
+          "fitness": 1,
+          "notes": "very simple, barely anything on top of the beat. "
+        },
+        "B_seed1": {
+          "follow": 2,
+          "updated": "2026-10-19T12:14:29.955Z",
+          "fitness": 1,
+          "notes": "i'm almost having a seizure/feeling electrocuted. this does not work. beat is hidden under this hammering electric sound.",
+          "interest": 1
+        },
+        "A_seed0": {
+          "follow": 4,
+          "updated": "2026-10-19T12:14:54.752Z",
+          "interest": 2,
+          "fitness": 2,
+          "notes": "flat, boring decoration, not much on top of the beat."
+        }
+      }
+    }
+  ],
+  "clips": [
+    {
+      "id": "A_seed0",
+      "system": "A rules",
+      "file": "../output/audio/A_seed0.wav"
+    },
+    {
+      "id": "A_seed1",
+      "system": "A rules",
+      "file": "../output/audio/A_seed1.wav"
+    },
+    {
+      "id": "B_seed0",
+      "system": "B free",
+      "file": "../output/audio/B_seed0.wav"
+    },
+    {
+      "id": "B_seed1",
+      "system": "B free",
+      "file": "../output/audio/B_seed1.wav"
+    },
+    {
+      "id": "C_seed0",
+      "system": "C constrained",
+      "file": "../output/audio/C_seed0.wav"
+    },
+    {
+      "id": "C_seed1",
+      "system": "C constrained",
+      "file": "../output/audio/C_seed1.wav"
+    },
+    {
+      "id": "D_seed0",
+      "system": "D fine-tuned",
+      "file": "../output/audio/D_seed0.wav"
+    },
+    {
+      "id": "D_seed1",
+      "system": "D fine-tuned",
+      "file": "../output/audio/D_seed1.wav"
+    }
+  ],
+  "savedAt": "2026-10-19T19:53:10.304Z"
+}
