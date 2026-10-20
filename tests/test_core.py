@@ -1,4 +1,4 @@
-"""Core checks (see PLAN.md section 13). Tests are added as each module is implemented."""
+"""Core checks. Tests are added as each module is implemented."""
 import numpy as np
 
 from src.config import SEEDS, skeleton_bar, skeleton_loop

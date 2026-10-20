@@ -27,7 +27,7 @@ CLIP = 3.0           # gradient-norm clipping, as Drums RNN
 MAX_EPOCHS = 200
 PATIENCE = 15        # epochs without validation improvement before stopping
 
-# Model selection grid (PLAN.md section 4): two output types x three sizes, chosen by validation loss.
+# Model selection grid: two output types x three sizes, chosen by validation loss.
 OUTPUTS = ("bernoulli", "categorical")
 SIZES = {
     "small 2x128": dict(hidden=128, layers=2, dropout=0.2),

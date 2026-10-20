@@ -104,7 +104,7 @@ def lstm_loop(model: DrumLSTM, seed: int, constrained: bool, n_bars: int = N_BAR
 def add_fill(loop: np.ndarray) -> np.ndarray:
     """Overwrite the toms (channels 4-6) on steps 12-15 of the last bar with the fixed fill.
 
-    Listening clips only (PLAN.md section 7); same for all systems. Returns a copy, (steps, 9).
+    Listening clips only; same for all systems. Returns a copy, (steps, 9).
     """
     out = loop.copy()
     start = len(loop) - STEPS_PER_BAR

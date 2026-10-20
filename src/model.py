@@ -1,6 +1,6 @@
 """Small LSTM: input = previous 9-dim step + one-hot position (16).
 
-Two output types (PLAN.md section 4):
+Two output types:
 - "bernoulli": 9 logits, one independent hit probability per drum.
 - "categorical": 512 logits, one choice among all drum combinations per step (as Magenta's Drums RNN).
 Both are trained with the negative log-likelihood of the real next step, so their losses per step compare.

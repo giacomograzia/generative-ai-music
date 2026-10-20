@@ -64,7 +64,7 @@ def evaluate(loops: np.ndarray) -> dict[str, float]:
             "repeat rate": repeat_rate(loops)}
 
 
-# --- follow-up analyses (PLAN.md section 5) ----------------------------------------------------
+# --- follow-up analyses -------------------------------------------------------------------------
 def change_per_boundary(loops: np.ndarray) -> np.ndarray:
     """Decoration change at each bar boundary (1-2 ... 7-8), averaged over loops. Returns (n_bars - 1,)."""
     dec = _bars(loops)[..., DEC]
